@@ -103,7 +103,7 @@
         <option value="เวรบ่าย">🌤 เวรบ่าย (16:30 - 00:30)</option>
         <option value="เวรดึก">🌙 เวรดึก (00:30 - 08:30)</option>
       </select>
-      <div class="shift-lock-note">ระบบล็อคเวรอัตโนมัติตามเวลาของเซิร์ฟเวอร์ เพื่อป้องกันการเลือกเวรผิดหรือการปรับเวลาเครื่อง</div>
+      <!-- <div class="shift-lock-note">ระบบล็อคเวรอัตโนมัติตามเวลาของเซิร์ฟเวอร์ เพื่อป้องกันการเลือกเวรผิดหรือการปรับเวลาเครื่อง</div> -->
       <div class="time-sync-note sync-fail" id="timeSyncNote">⏳ กำลังซิงค์เวลากับเซิร์ฟเวอร์...</div>
     </div>
 
@@ -123,8 +123,8 @@
     </div>
 
     <div class="action-btn-wrap">
-      <button class="btn-checkin" id="btnCheckIn" onclick="submitAttendance('IN')" disabled>✅ กดเข้างาน</button>
-      <button class="btn-checkout" id="btnCheckOut" onclick="submitAttendance('OUT')" style="display:none;">🚪 กดออกงาน</button>
+      <button class="btn-checkin" id="btnCheckIn" onclick="submitAttendance('IN')" disabled>✅ เข้างาน</button>
+      <button class="btn-checkout" id="btnCheckOut" onclick="submitAttendance('OUT')" style="display:none;">🚪 ออกงาน</button>
     </div>
     <div class="status-note" id="checkedInNote" style="display:none;">คุณเช็คอินอยู่ กดปุ่มด้านบนเพื่อออกงาน</div>
 
