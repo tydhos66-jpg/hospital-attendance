@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ระบบลงเวลา รพ.</title>
+</head>
+<body>
+  <h2>🧪 ทดสอบ LIFF พื้นฐาน</h2>
+  <div id="box">กำลังเริ่มต้น...</div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    const LIFF_ID = '2011433356-rMDNTRo6';
+    const box = document.getElementById('box');
+
+    try {
+      box.innerText = 'ขั้นที่ 1: เริ่ม liff.init()...';
+
+      liff.init({ liffId: LIFF_ID })
+        .then(() => {
+          box.innerText = 'ขั้นที่ 2: init สำเร็จ, กำลังเช็คสถานะล็อกอิน...';
+          if (!liff.isLoggedIn()) {
+            box.innerText = 'ขั้นที่ 3: ยังไม่ได้ล็อกอิน กำลังพาไปล็อกอิน...';
+            liff.login();
+            return;
+          }
+          box.innerText = 'ขั้นที่ 3: ล็อกอินแล้ว, กำลังดึงโปรไฟล์...';
+          return liff.getProfile();
+        })
+        .then((profile) => {
+          if (!profile) return;
+          box.innerHTML =
+            '✅ ยินดีต้อนรับ คุณ ' + profile.displayName +
+            '<br><img src="' + profile.pictureUrl + '" style="border-radius:50%;width:80px;margin-top:12px;">' +
+            '<br><small style="color:#888">userId: ' + profile.userId + '</small>';
+        })
+        .catch((err) => {
+          box.innerText = '❌ เกิดข้อผิดพลาด (ใน promise):\n' + JSON.stringify(err, null, 2);
+        });
+    } catch (syncErr) {
+      box.innerText = '❌ เกิดข้อผิดพลาดทันที (sync error):\n' + syncErr.message;
+    }
+  </script>
+</body>
+</html>
