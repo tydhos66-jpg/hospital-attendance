@@ -3,43 +3,229 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ระบบลงเวลา รพ.</title>
+  <title>เช็คอินเข้างาน</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      background: #f2f6f5;
+      color: #1a1a1a;
+    }
+    .header {
+      background: linear-gradient(135deg, #0d8f7d, #14b8a0);
+      color: white;
+      padding: 28px 20px 36px;
+      text-align: center;
+      border-radius: 0 0 24px 24px;
+    }
+    .header h1 { font-size: 18px; margin: 4px 0 0; font-weight: 600; }
+    .header p { font-size: 13px; margin: 4px 0 0; opacity: 0.9; }
+    .avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 2px solid white; margin-bottom: 8px;
+    }
+    .container { max-width: 420px; margin: -18px auto 0; padding: 0 16px 30px; }
+    .card {
+      background: white; border-radius: 16px; padding: 18px;
+      margin-bottom: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .welcome { text-align: center; font-size: 15px; font-weight: 600; color: #0d8f7d; }
+    label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; font-weight: 600; }
+    select {
+      width: 100%; padding: 12px; border: 1.5px solid #ddd; border-radius: 10px;
+      font-size: 15px; background: white; -webkit-appearance: none;
+    }
+    .gps-status {
+      display: flex; align-items: center; gap: 10px; padding: 14px;
+      border-radius: 12px; font-size: 14px; font-weight: 600;
+    }
+    .gps-ok { background: #E6F9EE; color: #0d8f7d; }
+    .gps-fail { background: #FDEAEA; color: #E53935; }
+    .gps-wait { background: #F0F0F0; color: #888; }
+    .gps-icon { font-size: 20px; }
+    .info-row {
+      display: flex; justify-content: space-between; font-size: 13px;
+      padding: 8px 0; border-bottom: 1px solid #f0f0f0; color: #555;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row b { color: #222; }
+    button {
+      width: 100%; padding: 15px; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 4px;
+    }
+    .btn-checkin { background: #0d8f7d; color: white; }
+    .btn-checkin:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-checkout { background: #fff; color: #E53935; border: 1.5px solid #E53935; }
+    #resultMsg {
+      text-align: center; font-size: 14px; padding: 10px; border-radius: 10px;
+      margin-top: 10px; display: none;
+    }
+    .msg-success { background: #E6F9EE; color: #0d8f7d; }
+    .msg-error { background: #FDEAEA; color: #E53935; }
+  </style>
 </head>
 <body>
-  <h2>🧪 ทดสอบ LIFF พื้นฐาน</h2>
-  <div id="box">กำลังเริ่มต้น...</div>
+
+  <div class="header">
+    <img id="avatarImg" class="avatar" src="" style="display:none;">
+    <h1 id="headerTitle">🏥 เช็คอินเข้างาน</h1>
+    <p>โรงพยาบาล (ระบุชื่อ รพ.)</p>
+  </div>
+
+  <div class="container">
+
+    <div class="card">
+      <div class="welcome" id="welcomeText">กำลังโหลดข้อมูลผู้ใช้...</div>
+    </div>
+
+    <div class="card">
+      <label>เลือกเวรที่ปฏิบัติงาน</label>
+      <select id="shiftSelect">
+        <option value="">-- กรุณาเลือกเวร --</option>
+        <option value="เวรเช้า">☀️ เวรเช้า (08:30)</option>
+        <option value="เวรบ่าย">🌤 เวรบ่าย (16:30)</option>
+        <option value="เวรดึก">🌙 เวรดึก (00:30)</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="gps-status gps-wait" id="gpsStatus">
+        <span class="gps-icon">📍</span>
+        <span id="gpsStatusText">กำลังตรวจสอบตำแหน่ง GPS...</span>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="info-row"><span>เวลาปัจจุบัน</span><b id="infoTime">-</b></div>
+        <div class="info-row"><span>ระยะห่างจาก รพ.</span><b id="infoDistance">-</b></div>
+        <div class="info-row"><span>ความแม่นยำ GPS</span><b id="infoAccuracy">-</b></div>
+      </div>
+    </div>
+
+    <button class="btn-checkin" id="btnCheckIn" onclick="submitAttendance('IN')" disabled>✅ กดเข้างาน</button>
+    <button class="btn-checkout" id="btnCheckOut" onclick="submitAttendance('OUT')" style="margin-top:10px;">🚪 กดออกงาน</button>
+
+    <div id="resultMsg"></div>
+
+  </div>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
+    // ===== ตั้งค่า =====
     const LIFF_ID = '2011433356-rMDNTRo6';
-    const box = document.getElementById('box');
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbzpRxIZTTYIRf7visEHSrj5Wr8YD0eHc6dJHXkO8JzjAYoJ8qFw7-5m_oF9HC_DH7a0/exec';
+    const HOSPITAL_LAT = 13.756331;   // TODO: ใส่พิกัดจริงของ รพ. (ต้องตรงกับ Code.gs)
+    const HOSPITAL_LNG = 100.501765;  // TODO: ใส่พิกัดจริงของ รพ. (ต้องตรงกับ Code.gs)
+    const MAX_DISTANCE_METERS = 300;
 
-    try {
-      box.innerText = 'ขั้นที่ 1: เริ่ม liff.init()...';
+    let profile = null;
+    let currentPos = null; // {lat, lng, accuracy}
+    let gpsPassed = false;
 
-      liff.init({ liffId: LIFF_ID })
-        .then(() => {
-          box.innerText = 'ขั้นที่ 2: init สำเร็จ, กำลังเช็คสถานะล็อกอิน...';
-          if (!liff.isLoggedIn()) {
-            box.innerText = 'ขั้นที่ 3: ยังไม่ได้ล็อกอิน กำลังพาไปล็อกอิน...';
-            liff.login();
-            return;
-          }
-          box.innerText = 'ขั้นที่ 3: ล็อกอินแล้ว, กำลังดึงโปรไฟล์...';
-          return liff.getProfile();
+    // ===== เริ่ม LIFF =====
+    liff.init({ liffId: LIFF_ID }).then(() => {
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      return liff.getProfile();
+    }).then((p) => {
+      if (!p) return;
+      profile = p;
+      document.getElementById('welcomeText').innerText = 'ยินดีต้อนรับคุณเข้าสู่งาน ' + p.displayName;
+      document.getElementById('avatarImg').src = p.pictureUrl;
+      document.getElementById('avatarImg').style.display = 'inline-block';
+      startWatchingLocation();
+      loadRecords();
+    }).catch((err) => {
+      document.getElementById('welcomeText').innerText = '❌ โหลดข้อมูลผู้ใช้ไม่สำเร็จ: ' + err;
+    });
+
+    // ===== GPS =====
+    function calcDistance(lat1, lng1, lat2, lng2) {
+      const R = 6371000;
+      const toRad = d => d * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function startWatchingLocation() {
+      if (!navigator.geolocation) {
+        setGpsStatus(false, 'อุปกรณ์ไม่รองรับ GPS');
+        return;
+      }
+      navigator.geolocation.watchPosition((pos) => {
+        currentPos = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        };
+        const distance = calcDistance(currentPos.lat, currentPos.lng, HOSPITAL_LAT, HOSPITAL_LNG);
+        document.getElementById('infoDistance').innerText = Math.round(distance) + ' เมตร';
+        document.getElementById('infoAccuracy').innerText = '± ' + Math.round(currentPos.accuracy) + ' เมตร';
+        gpsPassed = distance <= MAX_DISTANCE_METERS;
+        setGpsStatus(gpsPassed, gpsPassed ? 'ตำแหน่งผ่านเงื่อนไข สามารถบันทึกเวลาได้' : `อยู่ห่างจาก รพ. ${Math.round(distance)} เมตร (เกิน ${MAX_DISTANCE_METERS} เมตร)`);
+        updateCheckInButton();
+      }, (err) => {
+        setGpsStatus(false, 'กรุณาอนุญาตการเข้าถึงตำแหน่ง (' + err.message + ')');
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+
+      setInterval(() => {
+        document.getElementById('infoTime').innerText = new Date().toLocaleTimeString('th-TH');
+      }, 1000);
+    }
+
+    function setGpsStatus(ok, text) {
+      const el = document.getElementById('gpsStatus');
+      el.className = 'gps-status ' + (ok ? 'gps-ok' : 'gps-fail');
+      document.getElementById('gpsStatusText').innerText = text;
+    }
+
+    document.getElementById('shiftSelect').addEventListener('change', updateCheckInButton);
+
+    function updateCheckInButton() {
+      const shift = document.getElementById('shiftSelect').value;
+      document.getElementById('btnCheckIn').disabled = !(shift && gpsPassed && currentPos);
+    }
+
+    // ===== ส่งข้อมูลเข้า-ออกงาน =====
+    function submitAttendance(type) {
+      if (!currentPos) { showResult(false, 'กำลังรอสัญญาณ GPS กรุณารอสักครู่'); return; }
+      const shift = document.getElementById('shiftSelect').value;
+      if (type === 'IN' && !shift) { showResult(false, 'กรุณาเลือกเวรก่อนกดเข้างาน'); return; }
+
+      showResult(true, 'กำลังบันทึกข้อมูล...');
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'attendance',
+          userId: profile.userId,
+          displayName: profile.displayName,
+          type: type,
+          shift: shift,
+          lat: currentPos.lat,
+          lng: currentPos.lng
         })
-        .then((profile) => {
-          if (!profile) return;
-          box.innerHTML =
-            '✅ ยินดีต้อนรับ คุณ ' + profile.displayName +
-            '<br><img src="' + profile.pictureUrl + '" style="border-radius:50%;width:80px;margin-top:12px;">' +
-            '<br><small style="color:#888">userId: ' + profile.userId + '</small>';
-        })
-        .catch((err) => {
-          box.innerText = '❌ เกิดข้อผิดพลาด (ใน promise):\n' + JSON.stringify(err, null, 2);
-        });
-    } catch (syncErr) {
-      box.innerText = '❌ เกิดข้อผิดพลาดทันที (sync error):\n' + syncErr.message;
+      })
+      .then(res => res.json())
+      .then(res => { showResult(res.success, res.message); })
+      .catch(err => showResult(false, 'เชื่อมต่อ backend ไม่สำเร็จ: ' + err));
+    }
+
+    function showResult(success, message) {
+      const el = document.getElementById('resultMsg');
+      el.innerText = message;
+      el.className = success ? 'msg-success' : 'msg-error';
+      el.style.display = 'block';
+    }
+
+    function loadRecords() {
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'records', userId: profile.userId })
+      }).then(res => res.json()).then(data => {
+        // เผื่ออนาคตอยากโชว์ประวัติ; ตอนนี้ยังไม่แสดงในหน้านี้
+        console.log('records', data);
+      }).catch(() => {});
     }
   </script>
 </body>
