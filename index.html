@@ -42,6 +42,11 @@
     .shift-lock-note {
       font-size: 12px; color: #888; margin-top: 6px;
     }
+    .time-sync-note {
+      font-size: 11.5px; margin-top: 4px;
+    }
+    .sync-ok { color: #0d8f7d; }
+    .sync-fail { color: #E53935; }
     .gps-status {
       display: flex; align-items: center; gap: 10px; padding: 14px;
       border-radius: 12px; font-size: 14px; font-weight: 600;
@@ -96,7 +101,8 @@
         <option value="เวรบ่าย">🌤 เวรบ่าย (16:30 - 00:30)</option>
         <option value="เวรดึก">🌙 เวรดึก (00:30 - 08:30)</option>
       </select>
-      <div class="shift-lock-note">ระบบล็อคเวรอัตโนมัติตามเวลาปัจจุบัน เพื่อป้องกันการเลือกเวรผิด</div>
+      <div class="shift-lock-note">ระบบล็อคเวรอัตโนมัติตามเวลาของเซิร์ฟเวอร์ เพื่อป้องกันการเลือกเวรผิดหรือการปรับเวลาเครื่อง</div>
+      <div class="time-sync-note sync-fail" id="timeSyncNote">⏳ กำลังซิงค์เวลากับเซิร์ฟเวอร์...</div>
     </div>
 
     <div class="card">
@@ -105,7 +111,7 @@
         <span id="gpsStatusText">กำลังตรวจสอบตำแหน่ง GPS...</span>
       </div>
       <div style="margin-top:12px;">
-        <div class="info-row"><span>เวลาปัจจุบัน</span><b id="infoTime">-</b></div>
+        <div class="info-row"><span>เวลาปัจจุบัน (เซิร์ฟเวอร์)</span><b id="infoTime">-</b></div>
         <div class="info-row"><span>ระยะห่างจาก รพ.</span><b id="infoDistance">-</b></div>
         <div class="info-row"><span>ความแม่นยำ GPS</span><b id="infoAccuracy">-</b></div>
       </div>
@@ -130,16 +136,55 @@
     const HOSPITAL_LAT = 6.61671;
     const HOSPITAL_LNG = 101.42772;
     const MAX_DISTANCE_METERS = 300;
+    const TIME_SYNC_INTERVAL_MS = 5 * 60 * 1000; // sync ใหม่ทุก 5 นาที กันเวลาไหล
 
     let profile = null;
     let currentPos = null; // {lat, lng, accuracy}
     let gpsPassed = false;
     let hasCheckedIn = false; // true = เช็คอินอยู่ ยังไม่ได้เช็คเอาท์ -> ล็อคปุ่มเข้างาน
 
-    // ===== ล็อคเวรอัตโนมัติตามเวลาปัจจุบัน =====
+    // ===== ซิงค์เวลากับเซิร์ฟเวอร์ (Google Apps Script) =====
+    // แทนที่จะใช้ new Date() ของเครื่อง (ซึ่งพนักงานอาจปรับเวลาเองเพื่อสลับเวร)
+    // เราคำนวณ "ส่วนต่าง" (offset) ระหว่างเวลาเซิร์ฟเวอร์กับเวลาเครื่อง แล้วบวกกลับเข้าไปทุกครั้งที่ต้องใช้เวลา
+    let serverTimeOffset = 0;   // ms: serverTime - deviceTime ณ ตอนซิงค์
+    let timeSynced = false;
+
+    function getSyncedNow() {
+      return new Date(Date.now() + serverTimeOffset);
+    }
+
+    function syncServerTime() {
+      return fetch(GAS_URL + '?action=servertime', { method: 'GET' })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.success && data.timestamp) {
+            const deviceNow = Date.now();
+            serverTimeOffset = data.timestamp - deviceNow;
+            timeSynced = true;
+            setTimeSyncNote(true, '✅ ซิงค์เวลากับเซิร์ฟเวอร์แล้ว');
+          } else {
+            throw new Error('ข้อมูลเวลาจากเซิร์ฟเวอร์ไม่ถูกต้อง');
+          }
+        })
+        .catch(err => {
+          timeSynced = false;
+          setTimeSyncNote(false, '⚠️ ซิงค์เวลากับเซิร์ฟเวอร์ไม่สำเร็จ ใช้เวลาเครื่องชั่วคราว (' + err.message + ')');
+        })
+        .finally(() => {
+          lockShiftSelect(); // ล็อคเวรใหม่ทุกครั้งหลังซิงค์เวลาเสร็จ (ไม่ว่าจะสำเร็จหรือ fallback)
+        });
+    }
+
+    function setTimeSyncNote(ok, text) {
+      const el = document.getElementById('timeSyncNote');
+      el.className = 'time-sync-note ' + (ok ? 'sync-ok' : 'sync-fail');
+      el.innerText = text;
+    }
+
+    // ===== ล็อคเวรอัตโนมัติตามเวลาของเซิร์ฟเวอร์ =====
     // เวรเช้า 08:30-16:30 / เวรบ่าย 16:30-00:30 / เวรดึก 00:30-08:30
     function getCurrentShiftName() {
-      const now = new Date();
+      const now = getSyncedNow();
       const mins = now.getHours() * 60 + now.getMinutes();
       if (mins >= 510 && mins < 990) return 'เวรเช้า';  // 08:30–16:30
       if (mins >= 990 || mins < 30) return 'เวรบ่าย';   // 16:30–00:30
@@ -156,8 +201,10 @@
       shiftSelect.disabled = true; // ล็อคเสมอ ไม่ให้ผู้ใช้เปลี่ยนเอง
     }
 
-    // ล็อคทันทีตั้งแต่หน้าโหลด (ไม่ต้องรอ LIFF/GPS) แล้วเช็คซ้ำทุก 30 วิ เผื่อข้ามรอยต่อเวร
-    lockShiftSelect();
+    // ซิงค์เวลาทันทีตั้งแต่หน้าโหลด (ไม่ต้องรอ LIFF/GPS) แล้วซิงค์ซ้ำเป็นระยะเผื่อ offset คลาดเคลื่อน
+    syncServerTime();
+    setInterval(syncServerTime, TIME_SYNC_INTERVAL_MS);
+    // เช็คจุดตัดเวรถี่ขึ้น (ทุก 30 วิ) โดยใช้เวลาที่ sync ไว้ล่าสุด ไม่ต้องยิง request ใหม่ทุกครั้ง
     setInterval(lockShiftSelect, 30000);
 
     // ===== เริ่ม LIFF =====
@@ -194,7 +241,7 @@
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
 
       setInterval(() => {
-        document.getElementById('infoTime').innerText = new Date().toLocaleTimeString('th-TH');
+        document.getElementById('infoTime').innerText = getSyncedNow().toLocaleTimeString('th-TH');
       }, 1000);
     }
 
