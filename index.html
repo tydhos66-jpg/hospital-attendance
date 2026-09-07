@@ -131,7 +131,7 @@
     }).then((p) => {
       if (!p) return;
       profile = p;
-      document.getElementById('welcomeText').innerText = 'ยินดีต้อนรับคุณ ' + p.displayName + ' เข้าสู่งาน';
+      document.getElementById('welcomeText').innerText = 'ยินดีต้อนรับคุณ ' + p.displayName;
       document.getElementById('avatarImg').src = p.pictureUrl;
       document.getElementById('avatarImg').style.display = 'inline-block';
       startWatchingLocation();
