@@ -83,9 +83,9 @@
       <label>เลือกเวรที่ปฏิบัติงาน</label>
       <select id="shiftSelect">
         <option value="">-- กรุณาเลือกเวร --</option>
-        <option value="เวรเช้า">☀️ เวรเช้า (08:30)</option>
-        <option value="เวรบ่าย">🌤 เวรบ่าย (16:30)</option>
-        <option value="เวรดึก">🌙 เวรดึก (00:30)</option>
+        <option value="เวรเช้า">☀️ เวรเช้า (08:30 - 16:30)</option>
+        <option value="เวรบ่าย">🌤 เวรบ่าย (16:30 - 00:30)</option>
+        <option value="เวรดึก">🌙 เวรดึก (00:30 - 08:30)</option>
       </select>
     </div>
 
@@ -131,7 +131,7 @@
     }).then((p) => {
       if (!p) return;
       profile = p;
-      document.getElementById('welcomeText').innerText = 'ยินดีต้อนรับคุณเข้าสู่งาน ' + p.displayName;
+      document.getElementById('welcomeText').innerText = 'ยินดีต้อนรับคุณ ' + p.displayName + ' เข้าสู่งาน';
       document.getElementById('avatarImg').src = p.pictureUrl;
       document.getElementById('avatarImg').style.display = 'inline-block';
       startWatchingLocation();
