@@ -8,8 +8,8 @@
   <style>
     * { box-sizing: border-box; }
     body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f2f6f5; margin: 0; padding: 20px; color: #1a1a1a; }
-    h1 { font-size: 20px; color: #fff; margin-bottom: 4px; }
-    .subtitle { color: #888; font-size: 13px; margin-bottom: 20px; }
+    h1 { font-size: 20px; color: #FFFFFF; margin-bottom: 4px; }
+    .subtitle { color: #CCCCCC; font-size: 13px; margin-bottom: 20px; }
     .toolbar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
     select, button {
       padding: 8px 14px; border-radius: 8px; border: 1.5px solid #ddd; font-size: 14px; background: white;
@@ -262,14 +262,14 @@
      // });
 
       // ===== ตารางมาสายบ่อยสุด =====
-      const lateByPerson = {};
-      checkins.filter(r => r.status === 'สาย').forEach(r => {
-        lateByPerson[r.name] = (lateByPerson[r.name] || 0) + 1;
-      });
-      const sorted = Object.entries(lateByPerson).sort((a, b) => b[1] - a[1]).slice(0, 10);
-      document.getElementById('lateTableBody').innerHTML = sorted.length
-        ? sorted.map(([name, count]) => `<tr><td>${name}</td><td>${count}</td></tr>`).join('')
-        : '<tr><td colspan="2" style="text-align:center;color:#888;">ไม่มีข้อมูลมาสาย</td></tr>';
+      //const lateByPerson = {};
+      //checkins.filter(r => r.status === 'สาย').forEach(r => {
+        //lateByPerson[r.name] = (lateByPerson[r.name] || 0) + 1;
+      //});
+      //const sorted = Object.entries(lateByPerson).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      //document.getElementById('lateTableBody').innerHTML = sorted.length
+        //? sorted.map(([name, count]) => `<tr><td>${name}</td><td>${count}</td></tr>`).join('')
+        //: '<tr><td colspan="2" style="text-align:center;color:#888;">ไม่มีข้อมูลมาสาย</td></tr>';
 
       // ===== ตารางรายการล่าสุด =====
       renderRecentTable(data.attendance);
