@@ -68,7 +68,7 @@
       </div>
       -->
       <div class="card">
-        <h3>อันดับมาสายบ่อยสุด (Top 10)</h3>
+        <h3>อันดับมาสายประจำเดือน (Top 10)</h3>
         <table>
           <thead><tr><th>ชื่อ</th><th>จำนวนครั้งที่สาย</th></tr></thead>
           <tbody id="lateTableBody"></tbody>
@@ -113,7 +113,7 @@
       document.getElementById('kpiTotalCheckin').innerText = total;
       document.getElementById('kpiLateCount').innerText = late;
       document.getElementById('kpiLateRate').innerText = total ? Math.round(late / total * 100) + '%' : '0%';
-      document.getElementById('kpiLeaveCount').innerText = data.leave.length;
+      //document.getElementById('kpiLeaveCount').innerText = data.leave.length;
 
       // ===== กราฟรายวัน (ปกติ vs สาย) =====
       const byDate = {};
@@ -139,12 +139,12 @@
       });
 
       // ===== กราฟประเภทการลา =====
-      const byLeaveType = {};
-      data.leave.forEach(r => { byLeaveType[r.leaveType] = (byLeaveType[r.leaveType] || 0) + 1; });
-      drawChart('chartLeaveType', 'pie', {
-        labels: Object.keys(byLeaveType),
-        datasets: [{ data: Object.values(byLeaveType), backgroundColor: ['#0d8f7d', '#F5A623', '#4A90D9'] }]
-      });
+      //const byLeaveType = {};
+      //data.leave.forEach(r => { byLeaveType[r.leaveType] = (byLeaveType[r.leaveType] || 0) + 1; });
+      //drawChart('chartLeaveType', 'pie', {
+        //labels: Object.keys(byLeaveType),
+        //datasets: [{ data: Object.values(byLeaveType), backgroundColor: ['#0d8f7d', '#F5A623', '#4A90D9'] }]
+     // });
 
       // ===== ตารางมาสายบ่อยสุด =====
       const lateByPerson = {};
