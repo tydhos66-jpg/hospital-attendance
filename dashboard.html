@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard เข้า-ออกงาน</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f2f6f5; margin: 0; padding: 20px; color: #1a1a1a; }
+    h1 { font-size: 20px; color: #0d8f7d; margin-bottom: 4px; }
+    .subtitle { color: #888; font-size: 13px; margin-bottom: 20px; }
+    .toolbar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
+    select, button {
+      padding: 8px 14px; border-radius: 8px; border: 1.5px solid #ddd; font-size: 14px; background: white;
+    }
+    button { background: #0d8f7d; color: white; border: none; cursor: pointer; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+    .card { background: white; border-radius: 14px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+    .card h3 { margin: 0 0 12px; font-size: 15px; color: #333; }
+    .kpi-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .kpi { flex: 1; min-width: 140px; background: white; border-radius: 14px; padding: 16px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+    .kpi .num { font-size: 26px; font-weight: 700; color: #0d8f7d; }
+    .kpi .label { font-size: 12px; color: #888; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #f0f0f0; }
+    th { color: #888; font-weight: 600; }
+    #loading { text-align: center; padding: 60px; color: #888; }
+  </style>
+</head>
+<body>
+
+  <h1>📊 Dashboard เข้า-ออกงาน</h1>
+  <div class="subtitle" id="subtitle">กำลังโหลดข้อมูล...</div>
+
+  <div class="toolbar">
+    <select id="rangeSelect">
+      <option value="7">7 วันล่าสุด</option>
+      <option value="30" selected>30 วันล่าสุด</option>
+      <option value="90">90 วันล่าสุด</option>
+    </select>
+    <button onclick="loadData()">🔄 รีเฟรช</button>
+  </div>
+
+  <div id="loading">กำลังโหลดข้อมูล...</div>
+  <div id="content" style="display:none;">
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="num" id="kpiTotalCheckin">-</div><div class="label">เช็คอินทั้งหมด</div></div>
+      <div class="kpi"><div class="num" id="kpiLateCount">-</div><div class="label">มาสาย</div></div>
+      <div class="kpi"><div class="num" id="kpiLateRate">-</div><div class="label">อัตราสาย</div></div>
+      <div class="kpi"><div class="num" id="kpiLeaveCount">-</div><div class="label">คำขอลา</div></div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>จำนวนเช็คอินต่อวัน (ปกติ vs สาย)</h3>
+        <canvas id="chartDaily"></canvas>
+      </div>
+      <div class="card">
+        <h3>สัดส่วนเวรที่ใช้งาน</h3>
+        <canvas id="chartShift"></canvas>
+      </div>
+      <div class="card">
+        <h3>ประเภทการลา</h3>
+        <canvas id="chartLeaveType"></canvas>
+      </div>
+      <div class="card">
+        <h3>อันดับมาสายบ่อยสุด (Top 10)</h3>
+        <table>
+          <thead><tr><th>ชื่อ</th><th>จำนวนครั้งที่สาย</th></tr></thead>
+          <tbody id="lateTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbzpRxIZTTYIRf7visEHSrj5Wr8YD0eHc6dJHXkO8JzjAYoJ8qFw7-5m_oF9HC_DH7a0/exec';
+    let charts = {};
+
+    document.getElementById('rangeSelect').addEventListener('change', loadData);
+    loadData();
+
+    function loadData() {
+      const days = document.getElementById('rangeSelect').value;
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('content').style.display = 'none';
+
+      fetch(`${GAS_URL}?action=dashboard&days=${days}`)
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('content').style.display = 'block';
+          document.getElementById('subtitle').innerText =
+            `ข้อมูล ${days} วันล่าสุด · อัปเดตล่าสุด: ${new Date(data.generatedAt).toLocaleString('th-TH')}`;
+          render(data);
+        })
+        .catch(err => {
+          document.getElementById('loading').innerText = '❌ โหลดข้อมูลไม่สำเร็จ: ' + err;
+        });
+    }
+
+    function render(data) {
+      const checkins = data.attendance.filter(r => r.type === 'IN');
+
+      // ===== KPI =====
+      const total = checkins.length;
+      const late = checkins.filter(r => r.status === 'สาย').length;
+      document.getElementById('kpiTotalCheckin').innerText = total;
+      document.getElementById('kpiLateCount').innerText = late;
+      document.getElementById('kpiLateRate').innerText = total ? Math.round(late / total * 100) + '%' : '0%';
+      document.getElementById('kpiLeaveCount').innerText = data.leave.length;
+
+      // ===== กราฟรายวัน (ปกติ vs สาย) =====
+      const byDate = {};
+      checkins.forEach(r => {
+        byDate[r.date] = byDate[r.date] || { normal: 0, late: 0 };
+        r.status === 'สาย' ? byDate[r.date].late++ : byDate[r.date].normal++;
+      });
+      const dates = Object.keys(byDate).sort();
+      drawChart('chartDaily', 'bar', {
+        labels: dates,
+        datasets: [
+          { label: 'ปกติ', data: dates.map(d => byDate[d].normal), backgroundColor: '#0d8f7d' },
+          { label: 'สาย', data: dates.map(d => byDate[d].late), backgroundColor: '#E53935' }
+        ]
+      }, { scales: { x: { stacked: true }, y: { stacked: true } } });
+
+      // ===== กราฟสัดส่วนเวร =====
+      const byShift = {};
+      checkins.forEach(r => { byShift[r.shift] = (byShift[r.shift] || 0) + 1; });
+      drawChart('chartShift', 'doughnut', {
+        labels: Object.keys(byShift),
+        datasets: [{ data: Object.values(byShift), backgroundColor: ['#0d8f7d', '#14b8a0', '#8bd8c9'] }]
+      });
+
+      // ===== กราฟประเภทการลา =====
+      const byLeaveType = {};
+      data.leave.forEach(r => { byLeaveType[r.leaveType] = (byLeaveType[r.leaveType] || 0) + 1; });
+      drawChart('chartLeaveType', 'pie', {
+        labels: Object.keys(byLeaveType),
+        datasets: [{ data: Object.values(byLeaveType), backgroundColor: ['#0d8f7d', '#F5A623', '#4A90D9'] }]
+      });
+
+      // ===== ตารางมาสายบ่อยสุด =====
+      const lateByPerson = {};
+      checkins.filter(r => r.status === 'สาย').forEach(r => {
+        lateByPerson[r.name] = (lateByPerson[r.name] || 0) + 1;
+      });
+      const sorted = Object.entries(lateByPerson).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      document.getElementById('lateTableBody').innerHTML = sorted.length
+        ? sorted.map(([name, count]) => `<tr><td>${name}</td><td>${count}</td></tr>`).join('')
+        : '<tr><td colspan="2" style="text-align:center;color:#888;">ไม่มีข้อมูลมาสาย</td></tr>';
+    }
+
+    function drawChart(id, type, data, extraOptions) {
+      if (charts[id]) charts[id].destroy();
+      charts[id] = new Chart(document.getElementById(id), {
+        type,
+        data,
+        options: Object.assign({ responsive: true, plugins: { legend: { position: 'bottom' } } }, extraOptions || {})
+      });
+    }
+  </script>
+</body>
+</html>
