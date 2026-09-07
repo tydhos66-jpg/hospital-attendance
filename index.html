@@ -99,11 +99,9 @@
         <div class="info-row"><span>ระยะห่างจาก รพ.</span><b id="infoDistance">-</b></div>
         <div class="info-row"><span>ความแม่นยำ GPS</span><b id="infoAccuracy">-</b></div>
       </div>
-      <!--
-      <button id="btnRefreshGps" onclick="refreshLocation()" style="margin-top:12px; background:#f0f0f0; color:#333; font-size:14px; padding:11px;">
+      <button id="btnRefreshGps" onclick="refreshLocation()" style="display:none; margin-top:12px; background:#f0f0f0; color:#333; font-size:14px; padding:11px;">
         🔄 อัปเดต GPS
       </button>
-      -->
     </div>
 
     <button class="btn-checkin" id="btnCheckIn" onclick="submitAttendance('IN')" disabled>✅ กดเข้างาน</button>
@@ -133,7 +131,7 @@
     }).then((p) => {
       if (!p) return;
       profile = p;
-      document.getElementById('welcomeText').innerText = 'ยินดีต้อนรับคุณ' + p.displayName;
+      document.getElementById('welcomeText').innerText = 'ยินดีต้อนรับคุณเข้าสู่งาน ' + p.displayName;
       document.getElementById('avatarImg').src = p.pictureUrl;
       document.getElementById('avatarImg').style.display = 'inline-block';
       startWatchingLocation();
@@ -204,6 +202,10 @@
       const el = document.getElementById('gpsStatus');
       el.className = 'gps-status ' + (ok ? 'gps-ok' : 'gps-fail');
       document.getElementById('gpsStatusText').innerText = text;
+
+      // แสดงปุ่ม "อัปเดต GPS" เฉพาะตอนที่ไม่ผ่านเงื่อนไข (ขึ้นแดง)
+      const btnRefresh = document.getElementById('btnRefreshGps');
+      btnRefresh.style.display = ok ? 'none' : 'block';
     }
 
     document.getElementById('shiftSelect').addEventListener('change', updateCheckInButton);
