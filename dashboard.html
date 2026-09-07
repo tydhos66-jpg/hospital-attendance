@@ -14,6 +14,15 @@
     select, button {
       padding: 8px 14px; border-radius: 8px; border: 1.5px solid #ddd; font-size: 14px; background: white;
     }
+    .header {
+      background: linear-gradient(135deg, #0d8f7d, #14b8a0);
+      color: white;
+      padding: 28px 20px 36px;
+      text-align: center;
+      border-radius: 0 0 24px 24px;
+    }
+    .header h1 { font-size: 18px; margin: 4px 0 0; font-weight: 600; }
+    .header p { font-size: 13px; margin: 4px 0 0; opacity: 0.9; }
     button { background: #0d8f7d; color: white; border: none; cursor: pointer; font-weight: 600; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 16px; }
     .card { background: white; border-radius: 14px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
@@ -36,13 +45,16 @@
     .badge-pass { background: #E6F9EE; color: #0d8f7d; }
     #recentTableBody td { white-space: nowrap; }
     .recent-table-wrap { overflow-x: auto; }
+    .container { max-width: 420px; margin: -18px auto 0; padding: 0 16px 30px; }
   </style>
 </head>
 <body>
-
+<div class="header">
   <h1>📊 Dashboard เข้า-ออกงาน</h1>
   <div class="subtitle" id="subtitle">กำลังโหลดข้อมูล...</div>
+</div>
 
+<div class="container">
   <div class="toolbar">
     <select id="rangeSelect">
       <option value="7">7 วันล่าสุด</option>
@@ -109,6 +121,7 @@
     </div>
 
   </div>
+</div>
 
   <script>
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbwwWDQVRaPLJS498THwf9NZX0B21Xx9MrF4QGKLterDJl97bb3e8YdUkLVqIZTPKTpD/exec';
