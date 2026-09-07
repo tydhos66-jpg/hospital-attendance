@@ -65,6 +65,8 @@
       width: 100%; padding: 15px; border: none; border-radius: 12px;
       font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 4px;
     }
+    .action-btn-wrap { position: relative; }
+    .action-btn-wrap button { margin-top: 0; }
     .btn-checkin { background: #0d8f7d; color: white; }
     .btn-checkin:disabled { background: #ccc; cursor: not-allowed; }
     .btn-checkout { background: #fff; color: #E53935; border: 1.5px solid #E53935; }
@@ -120,9 +122,11 @@
       </button>
     </div>
 
-    <button class="btn-checkin" id="btnCheckIn" onclick="submitAttendance('IN')" disabled>✅ กดเข้างาน</button>
-    <div class="status-note" id="checkedInNote" style="display:none;">คุณเช็คอินไว้แล้ว กรุณากดออกงานก่อนจึงจะเข้างานใหม่ได้</div>
-    <button class="btn-checkout" id="btnCheckOut" onclick="submitAttendance('OUT')" style="margin-top:10px;">🚪 กดออกงาน</button>
+    <div class="action-btn-wrap">
+      <button class="btn-checkin" id="btnCheckIn" onclick="submitAttendance('IN')" disabled>✅ กดเข้างาน</button>
+      <button class="btn-checkout" id="btnCheckOut" onclick="submitAttendance('OUT')" style="display:none;">🚪 กดออกงาน</button>
+    </div>
+    <div class="status-note" id="checkedInNote" style="display:none;">คุณเช็คอินอยู่ กดปุ่มด้านบนเพื่อออกงาน</div>
 
     <div id="resultMsg"></div>
 
@@ -291,10 +295,22 @@
       btnRefresh.style.display = ok ? 'none' : 'block';
     }
 
-    // ล็อคปุ่ม "กดเข้างาน" (เทา, กดไม่ได้) ถ้าเช็คอินอยู่แล้วยังไม่ได้เช็คเอาท์
+    // สลับปุ่ม "กดเข้างาน" <-> "กดออกงาน" ในตำแหน่งเดียวกัน ตามสถานะ hasCheckedIn
     function updateCheckInButton() {
       const shift = document.getElementById('shiftSelect').value;
-      document.getElementById('btnCheckIn').disabled = hasCheckedIn || !(shift && gpsPassed && currentPos);
+      const btnIn = document.getElementById('btnCheckIn');
+      const btnOut = document.getElementById('btnCheckOut');
+
+      if (hasCheckedIn) {
+        // เช็คอินอยู่ -> ซ่อนปุ่มเข้างาน, โชว์ปุ่มออกงาน
+        btnIn.style.display = 'none';
+        btnOut.style.display = 'block';
+      } else {
+        // ยังไม่ได้เช็คอิน -> โชว์ปุ่มเข้างาน (เทาถ้ายังไม่พร้อม), ซ่อนปุ่มออกงาน
+        btnIn.style.display = 'block';
+        btnOut.style.display = 'none';
+        btnIn.disabled = !(shift && gpsPassed && currentPos);
+      }
       document.getElementById('checkedInNote').style.display = hasCheckedIn ? 'block' : 'none';
     }
 
