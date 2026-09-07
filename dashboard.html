@@ -47,7 +47,17 @@
     .badge-pass { background: #E6F9EE; color: #0d8f7d; }
     #recentTableBody td { white-space: nowrap; }
     .recent-table-wrap { overflow-x: auto; }
-    .container { max-width: 650px; margin: -18px auto 0; padding: 0 16px 30px; }
+    /* .container แบบเดียวกับ Bootstrap 5: กว้างเต็มจอบนมือถือ แล้วขยาย max-width ทีละขั้นตามจอที่ใหญ่ขึ้น */
+    .container {
+      width: 100%;
+      margin: -18px auto 0;
+      padding: 0 16px 30px;
+    }
+    @media (min-width: 576px)  { .container { max-width: 540px; } }
+    @media (min-width: 768px)  { .container { max-width: 720px; } }
+    @media (min-width: 992px)  { .container { max-width: 960px; } }
+    @media (min-width: 1200px) { .container { max-width: 1140px; } }
+    @media (min-width: 1400px) { .container { max-width: 1320px; } }
     /* ตาราง Top 10 มาสาย: จำกัดความสูง ถ้าข้อมูลเยอะให้ scroll แนวตั้งแทนดันการ์ดยาว */
     .late-table-wrap {
       max-height: 260px;
