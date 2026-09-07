@@ -36,6 +36,12 @@
       width: 100%; padding: 12px; border: 1.5px solid #ddd; border-radius: 10px;
       font-size: 15px; background: white; -webkit-appearance: none;
     }
+    select:disabled {
+      background: #f0f0f0; color: #666; cursor: not-allowed; border-color: #e0e0e0;
+    }
+    .shift-lock-note {
+      font-size: 12px; color: #888; margin-top: 6px;
+    }
     .gps-status {
       display: flex; align-items: center; gap: 10px; padding: 14px;
       border-radius: 12px; font-size: 14px; font-weight: 600;
@@ -83,13 +89,14 @@
     </div>
 
     <div class="card">
-      <label>เลือกเวรที่ปฏิบัติงาน</label>
-      <select id="shiftSelect">
+      <label>เวรที่ปฏิบัติงาน (ล็อคอัตโนมัติตามเวลา)</label>
+      <select id="shiftSelect" disabled>
         <option value="">-- กรุณาเลือกเวร --</option>
         <option value="เวรเช้า">☀️ เวรเช้า (08:30 - 16:30)</option>
         <option value="เวรบ่าย">🌤 เวรบ่าย (16:30 - 00:30)</option>
         <option value="เวรดึก">🌙 เวรดึก (00:30 - 08:30)</option>
       </select>
+      <div class="shift-lock-note">ระบบล็อคเวรอัตโนมัติตามเวลาปัจจุบัน เพื่อป้องกันการเลือกเวรผิด</div>
     </div>
 
     <div class="card">
@@ -128,6 +135,30 @@
     let currentPos = null; // {lat, lng, accuracy}
     let gpsPassed = false;
     let hasCheckedIn = false; // true = เช็คอินอยู่ ยังไม่ได้เช็คเอาท์ -> ล็อคปุ่มเข้างาน
+
+    // ===== ล็อคเวรอัตโนมัติตามเวลาปัจจุบัน =====
+    // เวรเช้า 08:30-16:30 / เวรบ่าย 16:30-00:30 / เวรดึก 00:30-08:30
+    function getCurrentShiftName() {
+      const now = new Date();
+      const mins = now.getHours() * 60 + now.getMinutes();
+      if (mins >= 510 && mins < 990) return 'เวรเช้า';  // 08:30–16:30
+      if (mins >= 990 || mins < 30) return 'เวรบ่าย';   // 16:30–00:30
+      return 'เวรดึก';                                    // 00:30–08:30
+    }
+
+    function lockShiftSelect() {
+      const shiftSelect = document.getElementById('shiftSelect');
+      const current = getCurrentShiftName();
+      if (shiftSelect.value !== current) {
+        shiftSelect.value = current;
+        updateCheckInButton();
+      }
+      shiftSelect.disabled = true; // ล็อคเสมอ ไม่ให้ผู้ใช้เปลี่ยนเอง
+    }
+
+    // ล็อคทันทีตั้งแต่หน้าโหลด (ไม่ต้องรอ LIFF/GPS) แล้วเช็คซ้ำทุก 30 วิ เผื่อข้ามรอยต่อเวร
+    lockShiftSelect();
+    setInterval(lockShiftSelect, 30000);
 
     // ===== เริ่ม LIFF =====
     liff.init({ liffId: LIFF_ID }).then(() => {
@@ -212,8 +243,6 @@
       const btnRefresh = document.getElementById('btnRefreshGps');
       btnRefresh.style.display = ok ? 'none' : 'block';
     }
-
-    document.getElementById('shiftSelect').addEventListener('change', updateCheckInButton);
 
     // ล็อคปุ่ม "กดเข้างาน" (เทา, กดไม่ได้) ถ้าเช็คอินอยู่แล้วยังไม่ได้เช็คเอาท์
     function updateCheckInButton() {
