@@ -57,6 +57,9 @@
     .btn-checkin { background: #0d8f7d; color: white; }
     .btn-checkin:disabled { background: #ccc; cursor: not-allowed; }
     .btn-checkout { background: #fff; color: #E53935; border: 1.5px solid #E53935; }
+    .status-note {
+      text-align: center; font-size: 12.5px; color: #888; margin-top: 6px;
+    }
     #resultMsg {
       text-align: center; font-size: 14px; padding: 10px; border-radius: 10px;
       margin-top: 10px; display: none;
@@ -105,6 +108,7 @@
     </div>
 
     <button class="btn-checkin" id="btnCheckIn" onclick="submitAttendance('IN')" disabled>✅ กดเข้างาน</button>
+    <div class="status-note" id="checkedInNote" style="display:none;">คุณเช็คอินไว้แล้ว กรุณากดออกงานก่อนจึงจะเข้างานใหม่ได้</div>
     <button class="btn-checkout" id="btnCheckOut" onclick="submitAttendance('OUT')" style="margin-top:10px;">🚪 กดออกงาน</button>
 
     <div id="resultMsg"></div>
@@ -123,6 +127,7 @@
     let profile = null;
     let currentPos = null; // {lat, lng, accuracy}
     let gpsPassed = false;
+    let hasCheckedIn = false; // true = เช็คอินอยู่ ยังไม่ได้เช็คเอาท์ -> ล็อคปุ่มเข้างาน
 
     // ===== เริ่ม LIFF =====
     liff.init({ liffId: LIFF_ID }).then(() => {
@@ -131,7 +136,7 @@
     }).then((p) => {
       if (!p) return;
       profile = p;
-      document.getElementById('welcomeText').innerText = 'ยินดีต้อนรับคุณ ' + p.displayName;
+      document.getElementById('welcomeText').innerText = 'ยินดีต้อนรับคุณ ' + p.displayName + ' เข้าสู่งาน';
       document.getElementById('avatarImg').src = p.pictureUrl;
       document.getElementById('avatarImg').style.display = 'inline-block';
       startWatchingLocation();
@@ -210,9 +215,11 @@
 
     document.getElementById('shiftSelect').addEventListener('change', updateCheckInButton);
 
+    // ล็อคปุ่ม "กดเข้างาน" (เทา, กดไม่ได้) ถ้าเช็คอินอยู่แล้วยังไม่ได้เช็คเอาท์
     function updateCheckInButton() {
       const shift = document.getElementById('shiftSelect').value;
-      document.getElementById('btnCheckIn').disabled = !(shift && gpsPassed && currentPos);
+      document.getElementById('btnCheckIn').disabled = hasCheckedIn || !(shift && gpsPassed && currentPos);
+      document.getElementById('checkedInNote').style.display = hasCheckedIn ? 'block' : 'none';
     }
 
     // ===== ส่งข้อมูลเข้า-ออกงาน =====
@@ -220,6 +227,7 @@
       if (!currentPos) { showResult(false, 'กำลังรอสัญญาณ GPS กรุณารอสักครู่'); return; }
       const shift = document.getElementById('shiftSelect').value;
       if (type === 'IN' && !shift) { showResult(false, 'กรุณาเลือกเวรก่อนกดเข้างาน'); return; }
+      if (type === 'IN' && hasCheckedIn) { showResult(false, 'คุณเช็คอินไว้แล้ว กรุณากดออกงานก่อน'); return; }
 
       showResult(true, 'กำลังบันทึกข้อมูล...');
       fetch(GAS_URL, {
@@ -236,7 +244,14 @@
         })
       })
       .then(res => res.json())
-      .then(res => { showResult(res.success, res.message); })
+      .then(res => {
+        showResult(res.success, res.message);
+        if (res.success) {
+          // เข้างานสำเร็จ -> ล็อคปุ่ม, ออกงานสำเร็จ -> ปลดล็อค
+          hasCheckedIn = (type === 'IN');
+          updateCheckInButton();
+        }
+      })
       .catch(err => showResult(false, 'เชื่อมต่อ backend ไม่สำเร็จ: ' + err));
     }
 
@@ -247,14 +262,17 @@
       el.style.display = 'block';
     }
 
+    // เช็คสถานะล่าสุดตอนเปิดหน้า (เผื่อปิดแอปแล้วเปิดใหม่ระหว่างที่ยังไม่ได้เช็คเอาท์)
     function loadRecords() {
-      fetch(_URL, {
+      fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'records', userId: profile.userId })
       }).then(res => res.json()).then(data => {
-        // เผื่ออนาคตอยากโชว์ประวัติ; ตอนนี้ยังไม่แสดงในหน้านี้
-        console.log('records', data);
+        if (data.attendance && data.attendance.length > 0) {
+          hasCheckedIn = data.attendance[0].type === 'IN';
+          updateCheckInButton();
+        }
       }).catch(() => {});
     }
   </script>
