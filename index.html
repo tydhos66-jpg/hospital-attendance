@@ -70,7 +70,7 @@
   <div class="header">
     <img id="avatarImg" class="avatar" src="" style="display:none;">
     <h1 id="headerTitle">🏥 เช็คอินเข้างาน</h1>
-    <p>โรงพยาบาลทุ่งยางแดง</p>
+    <p>โรงพยาบาล (ระบุชื่อ รพ.)</p>
   </div>
 
   <div class="container">
@@ -99,6 +99,9 @@
         <div class="info-row"><span>ระยะห่างจาก รพ.</span><b id="infoDistance">-</b></div>
         <div class="info-row"><span>ความแม่นยำ GPS</span><b id="infoAccuracy">-</b></div>
       </div>
+      <button id="btnRefreshGps" onclick="refreshLocation()" style="margin-top:12px; background:#f0f0f0; color:#333; font-size:14px; padding:11px;">
+        🔄 อัปเดต GPS
+      </button>
     </div>
 
     <button class="btn-checkin" id="btnCheckIn" onclick="submitAttendance('IN')" disabled>✅ กดเข้างาน</button>
@@ -151,25 +154,48 @@
         setGpsStatus(false, 'อุปกรณ์ไม่รองรับ GPS');
         return;
       }
-      navigator.geolocation.watchPosition((pos) => {
-        currentPos = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy
-        };
-        const distance = calcDistance(currentPos.lat, currentPos.lng, HOSPITAL_LAT, HOSPITAL_LNG);
-        document.getElementById('infoDistance').innerText = Math.round(distance) + ' เมตร';
-        document.getElementById('infoAccuracy').innerText = '± ' + Math.round(currentPos.accuracy) + ' เมตร';
-        gpsPassed = distance <= MAX_DISTANCE_METERS;
-        setGpsStatus(gpsPassed, gpsPassed ? 'ตำแหน่งผ่านเงื่อนไข สามารถบันทึกเวลาได้' : `อยู่ห่างจาก รพ. ${Math.round(distance)} เมตร (เกิน ${MAX_DISTANCE_METERS} เมตร)`);
-        updateCheckInButton();
-      }, (err) => {
-        setGpsStatus(false, 'กรุณาอนุญาตการเข้าถึงตำแหน่ง (' + err.message + ')');
-      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+      navigator.geolocation.watchPosition(processPosition, handleGpsError,
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
 
       setInterval(() => {
         document.getElementById('infoTime').innerText = new Date().toLocaleTimeString('th-TH');
       }, 1000);
+    }
+
+    function processPosition(pos) {
+      currentPos = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy
+      };
+      const distance = calcDistance(currentPos.lat, currentPos.lng, HOSPITAL_LAT, HOSPITAL_LNG);
+      document.getElementById('infoDistance').innerText = Math.round(distance) + ' เมตร';
+      document.getElementById('infoAccuracy').innerText = '± ' + Math.round(currentPos.accuracy) + ' เมตร';
+      gpsPassed = distance <= MAX_DISTANCE_METERS;
+      setGpsStatus(gpsPassed, gpsPassed ? 'ตำแหน่งผ่านเงื่อนไข สามารถบันทึกเวลาได้' : `อยู่ห่างจาก รพ. ${Math.round(distance)} เมตร (เกิน ${MAX_DISTANCE_METERS} เมตร)`);
+      updateCheckInButton();
+      resetRefreshButton();
+    }
+
+    function handleGpsError(err) {
+      setGpsStatus(false, 'กรุณาอนุญาตการเข้าถึงตำแหน่ง (' + err.message + ')');
+      resetRefreshButton();
+    }
+
+    // ปุ่มรีเฟรช GPS แบบกดเอง — ขอค่าตำแหน่งใหม่ทันที ไม่ใช้ค่า cache เก่า
+    function refreshLocation() {
+      const btn = document.getElementById('btnRefreshGps');
+      btn.disabled = true;
+      btn.innerText = '⏳ กำลังอัปเดตตำแหน่ง...';
+      setGpsStatus(false, 'กำลังค้นหาตำแหน่งใหม่...');
+      navigator.geolocation.getCurrentPosition(processPosition, handleGpsError,
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+    }
+
+    function resetRefreshButton() {
+      const btn = document.getElementById('btnRefreshGps');
+      btn.disabled = false;
+      btn.innerText = '🔄 อัปเดต GPS';
     }
 
     function setGpsStatus(ok, text) {
