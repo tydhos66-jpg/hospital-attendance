@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ระบบลางาน</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      background: #f2f6f5;
+      color: #1a1a1a;
+    }
+    .header {
+      background: linear-gradient(135deg, #0d8f7d, #14b8a0);
+      color: white;
+      padding: 28px 20px 36px;
+      text-align: center;
+      border-radius: 0 0 24px 24px;
+    }
+    .header h1 { font-size: 18px; margin: 4px 0 0; font-weight: 600; }
+    .header p { font-size: 13px; margin: 4px 0 0; opacity: 0.9; }
+    .avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 2px solid white; margin-bottom: 8px;
+    }
+    .container { max-width: 420px; margin: -18px auto 0; padding: 0 16px 30px; }
+    .card {
+      background: white; border-radius: 16px; padding: 18px;
+      margin-bottom: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .welcome { text-align: center; font-size: 15px; font-weight: 600; color: #0d8f7d; }
+    label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; font-weight: 600; }
+    .field { margin-bottom: 16px; }
+    .field:last-child { margin-bottom: 0; }
+    select, input[type="date"], textarea {
+      width: 100%; padding: 12px; border: 1.5px solid #ddd; border-radius: 10px;
+      font-size: 15px; background: white; font-family: inherit;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .date-row { display: flex; gap: 10px; }
+    .date-row .field { flex: 1; }
+    .field-hint { font-size: 12px; color: #888; margin-top: 6px; }
+    button.submit-btn {
+      width: 100%; padding: 15px; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 4px;
+      background: #0d8f7d; color: white;
+    }
+    button.submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+    #resultMsg {
+      text-align: center; font-size: 14px; padding: 10px; border-radius: 10px;
+      margin-top: 10px; display: none;
+    }
+    .msg-success { background: #E6F9EE; color: #0d8f7d; }
+    .msg-error { background: #FDEAEA; color: #E53935; }
+
+    .history-item {
+      padding: 12px 0; border-bottom: 1px solid #f0f0f0;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-main { font-size: 13.5px; }
+    .history-type { font-weight: 700; color: #1a1a1a; }
+    .history-dates { color: #888; font-size: 12.5px; margin-top: 2px; }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; white-space: nowrap; flex-shrink: 0;
+    }
+    .badge-pending { background: #FFF4E5; color: #B26A00; }
+    .badge-approved { background: #E6F9EE; color: #0d8f7d; }
+    .badge-rejected { background: #FDEAEA; color: #E53935; }
+    .empty-note { text-align: center; color: #888; font-size: 13px; padding: 10px 0; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <img id="avatarImg" class="avatar" src="" style="display:none;">
+    <h1>📝 ระบบลางาน</h1>
+    <p>โรงพยาบาลทุ่งยางแดง</p>
+  </div>
+
+  <div class="container">
+
+    <div class="card">
+      <div class="welcome" id="welcomeText">กำลังโหลดข้อมูลผู้ใช้...</div>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label>ประเภทการลา</label>
+        <select id="leaveType">
+          <option value="">-- กรุณาเลือกประเภท --</option>
+          <option value="ลาป่วย">🤒 ลาป่วย</option>
+          <option value="ลากิจส่วนตัว">🗂 ลากิจส่วนตัว</option>
+          <option value="ลาพักผ่อน">🏖 ลาพักผ่อน</option>
+          <option value="ลาคลอดบุตร">👶 ลาคลอดบุตร</option>
+          <option value="ลาบวช">🙏 ลาบวช</option>
+          <option value="อื่นๆ">📌 อื่นๆ</option>
+        </select>
+      </div>
+
+      <div class="field date-row">
+        <div class="field">
+          <label>วันที่เริ่มลา</label>
+          <input type="date" id="startDate">
+        </div>
+        <div class="field">
+          <label>วันที่สิ้นสุด</label>
+          <input type="date" id="endDate">
+        </div>
+      </div>
+      <div class="field-hint" id="dayCountHint"></div>
+
+      <div class="field" style="margin-top:16px;">
+        <label>เหตุผล / รายละเอียดเพิ่มเติม</label>
+        <textarea id="reason" placeholder="ระบุเหตุผลการลา..."></textarea>
+      </div>
+
+      <button class="submit-btn" id="btnSubmit" onclick="submitLeaveRequest()" style="margin-top:16px;">📩 ส่งคำขอลา</button>
+      <div id="resultMsg"></div>
+    </div>
+
+    <div class="card">
+      <div class="welcome" style="margin-bottom:12px;">ประวัติการลาล่าสุด</div>
+      <div id="historyList"><div class="empty-note">กำลังโหลด...</div></div>
+    </div>
+
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    // ===== ตั้งค่า =====
+    // TODO: สร้าง LIFF app ใหม่ใน LINE Developers Console สำหรับหน้านี้โดยเฉพาะ แล้วนำ LIFF ID มาใส่แทนค่าด้านล่าง
+    const LIFF_ID = 'YOUR_LEAVE_LIFF_ID'; // <-- แก้เป็น LIFF ID ของหน้าระบบลางานนี้
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwwWDQVRaPLJS498THwf9NZX0B21Xx9MrF4QGKLterDJl97bb3e8YdUkLVqIZTPKTpD/exec';
+
+    let profile = null;
+
+    // ===== เริ่ม LIFF =====
+    liff.init({ liffId: LIFF_ID }).then(() => {
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      return liff.getProfile();
+    }).then((p) => {
+      if (!p) return;
+      profile = p;
+      document.getElementById('welcomeText').innerText = 'ยื่นคำขอลาสำหรับคุณ ' + p.displayName;
+      document.getElementById('avatarImg').src = p.pictureUrl;
+      document.getElementById('avatarImg').style.display = 'inline-block';
+      loadHistory();
+    }).catch((err) => {
+      document.getElementById('welcomeText').innerText = '❌ โหลดข้อมูลผู้ใช้ไม่สำเร็จ: ' + err;
+    });
+
+    // ===== แสดงจำนวนวันลาแบบคร่าว ๆ เมื่อเลือกช่วงวันที่ครบ =====
+    document.getElementById('startDate').addEventListener('change', updateDayCountHint);
+    document.getElementById('endDate').addEventListener('change', updateDayCountHint);
+
+    function updateDayCountHint() {
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+      const hint = document.getElementById('dayCountHint');
+      if (!start || !end) { hint.innerText = ''; return; }
+      const diffDays = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
+      hint.innerText = diffDays >= 1 ? `รวม ${diffDays} วัน` : '⚠️ วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มลา';
+      hint.style.color = diffDays >= 1 ? '#888' : '#E53935';
+    }
+
+    // ===== ส่งคำขอลา =====
+    function submitLeaveRequest() {
+      const leaveType = document.getElementById('leaveType').value;
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const reason = document.getElementById('reason').value.trim();
+
+      if (!profile) { showResult(false, 'กำลังโหลดข้อมูลผู้ใช้ กรุณารอสักครู่'); return; }
+      if (!leaveType) { showResult(false, 'กรุณาเลือกประเภทการลา'); return; }
+      if (!startDate || !endDate) { showResult(false, 'กรุณาเลือกช่วงวันที่ลา'); return; }
+      if (new Date(endDate) < new Date(startDate)) { showResult(false, 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มลา'); return; }
+      if (!reason) { showResult(false, 'กรุณาระบุเหตุผลการลา'); return; }
+
+      const btn = document.getElementById('btnSubmit');
+      btn.disabled = true;
+      showResult(true, 'กำลังส่งคำขอลา...');
+
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'leave',
+          userId: profile.userId,
+          displayName: profile.displayName,
+          leaveType: leaveType,
+          startDate: startDate,
+          endDate: endDate,
+          reason: reason
+        })
+      })
+      .then(res => res.json())
+      .then(res => {
+        showResult(res.success, res.message);
+        if (res.success) {
+          document.getElementById('leaveType').value = '';
+          document.getElementById('startDate').value = '';
+          document.getElementById('endDate').value = '';
+          document.getElementById('reason').value = '';
+          document.getElementById('dayCountHint').innerText = '';
+          loadHistory();
+        }
+      })
+      .catch(err => showResult(false, 'เชื่อมต่อ backend ไม่สำเร็จ: ' + err))
+      .finally(() => { btn.disabled = false; });
+    }
+
+    function showResult(success, message) {
+      const el = document.getElementById('resultMsg');
+      el.innerText = message;
+      el.className = success ? 'msg-success' : 'msg-error';
+      el.style.display = 'block';
+    }
+
+    // ===== ดึงประวัติการลาล่าสุด (ใช้ action เดียวกับหน้าเข้างาน) =====
+    function loadHistory() {
+      const listEl = document.getElementById('historyList');
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'records', userId: profile.userId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const leave = data.leave || [];
+        if (!leave.length) {
+          listEl.innerHTML = '<div class="empty-note">ยังไม่มีประวัติการลา</div>';
+          return;
+        }
+        listEl.innerHTML = leave.map(r => {
+          let badgeClass = 'badge-pending', badgeText = 'รออนุมัติ';
+          if (r.status === 'อนุมัติ') { badgeClass = 'badge-approved'; badgeText = 'อนุมัติ'; }
+          else if (r.status === 'ไม่อนุมัติ') { badgeClass = 'badge-rejected'; badgeText = 'ไม่อนุมัติ'; }
+          return `<div class="history-item">
+            <div class="history-main">
+              <div class="history-type">${r.leaveType}</div>
+              <div class="history-dates">${formatDate(r.startDate)} - ${formatDate(r.endDate)}</div>
+            </div>
+            <span class="badge ${badgeClass}">${badgeText}</span>
+          </div>`;
+        }).join('');
+      })
+      .catch(() => {
+        listEl.innerHTML = '<div class="empty-note">โหลดประวัติไม่สำเร็จ</div>';
+      });
+    }
+
+    // แปลงวันที่ที่ backend ส่งมา (อาจเป็น ISO string หรือ Date) ให้อ่านง่ายแบบไทย
+    function formatDate(value) {
+      if (!value) return '-';
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return String(value);
+      return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+  </script>
+</body>
+</html>
