@@ -89,13 +89,13 @@
     // ===== ตั้งค่า =====
     // TODO: หน้านี้ต้องสร้างเป็น LIFF app ใหม่ใน LINE Developers Console เอง
     // (LINE Login channel เดียวกับ LIFF อื่น ๆ ก็ได้) แล้วนำ LIFF ID ที่ได้มาใส่แทนค่าด้านล่าง
-    const LIFF_ID = 'YOUR_HUB_LIFF_ID'; // <-- แก้เป็น LIFF ID ของหน้า "เมนูหลัก" นี้
+    const LIFF_ID = '2011433356-d61Estnv'; // <-- แก้เป็น LIFF ID ของหน้า "เมนูหลัก" นี้
 
     // LIFF ID ของระบบเข้างาน (มีอยู่แล้ว)
     const CHECKIN_LIFF_ID = '2011433356-rMDNTRo6';
 
     // TODO: สร้าง LIFF app ใหม่อีกตัวสำหรับ leave.html (ระบบลางาน) แล้วนำ LIFF ID มาใส่ตรงนี้
-    const LEAVE_LIFF_ID = 'YOUR_LEAVE_LIFF_ID'; // <-- แก้เป็น LIFF ID ของหน้าระบบลางาน (leave.html)
+    const LEAVE_LIFF_ID = '2011433356-ey1190SG'; // <-- แก้เป็น LIFF ID ของหน้าระบบลางาน (leave.html)
 
     liff.init({ liffId: LIFF_ID }).then(() => {
       if (!liff.isLoggedIn()) { liff.login(); return; }
