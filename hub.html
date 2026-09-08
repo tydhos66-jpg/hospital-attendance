@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เมนูหลัก</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      background: #f2f6f5;
+      color: #1a1a1a;
+    }
+    .header {
+      background: linear-gradient(135deg, #0d8f7d, #14b8a0);
+      color: white;
+      padding: 32px 20px 40px;
+      text-align: center;
+      border-radius: 0 0 24px 24px;
+    }
+    .header h1 { font-size: 19px; margin: 6px 0 0; font-weight: 600; }
+    .header p { font-size: 13px; margin: 4px 0 0; opacity: 0.9; }
+    .avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 2px solid white; margin-bottom: 4px;
+    }
+    .container { max-width: 420px; margin: -20px auto 0; padding: 0 16px 30px; }
+    .welcome-card {
+      background: white; border-radius: 16px; padding: 16px;
+      margin-bottom: 18px; text-align: center; font-size: 14px;
+      font-weight: 600; color: #0d8f7d;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .menu-card {
+      background: white; border-radius: 18px; padding: 22px 20px;
+      margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      display: flex; align-items: center; gap: 16px;
+      cursor: pointer; border: none; width: 100%; text-align: left;
+    }
+    .menu-card:active { transform: scale(0.98); }
+    .menu-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; flex-shrink: 0;
+    }
+    .icon-checkin { background: #E6F9EE; }
+    .icon-leave { background: #FFF4E5; }
+    .menu-text { flex: 1; }
+    .menu-title { font-size: 16px; font-weight: 700; color: #1a1a1a; margin: 0 0 2px; }
+    .menu-desc { font-size: 12.5px; color: #888; margin: 0; line-height: 1.4; }
+    .menu-arrow { font-size: 20px; color: #ccc; }
+    #loadErr { text-align: center; color: #E53935; font-size: 13px; padding: 12px; display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <img id="avatarImg" class="avatar" src="" style="display:none;">
+    <h1>🏥 เมนูหลัก</h1>
+    <p>โรงพยาบาลทุ่งยางแดง</p>
+  </div>
+
+  <div class="container">
+    <div class="welcome-card" id="welcomeText">กำลังโหลดข้อมูลผู้ใช้...</div>
+    <div id="loadErr"></div>
+
+    <button class="menu-card" onclick="openCheckIn()">
+      <div class="menu-icon icon-checkin">✅</div>
+      <div class="menu-text">
+        <p class="menu-title">ระบบเข้างาน</p>
+        <p class="menu-desc">เช็คอิน / เช็คเอาท์ พร้อมตรวจสอบตำแหน่ง GPS และล็อคเวรอัตโนมัติ</p>
+      </div>
+      <div class="menu-arrow">›</div>
+    </button>
+
+    <button class="menu-card" onclick="openLeave()">
+      <div class="menu-icon icon-leave">📝</div>
+      <div class="menu-text">
+        <p class="menu-title">ระบบลางาน</p>
+        <p class="menu-desc">ยื่นคำขอลา ระบุประเภท ช่วงวันที่ และเหตุผล พร้อมดูสถานะอนุมัติ</p>
+      </div>
+      <div class="menu-arrow">›</div>
+    </button>
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    // ===== ตั้งค่า =====
+    // TODO: หน้านี้ต้องสร้างเป็น LIFF app ใหม่ใน LINE Developers Console เอง
+    // (LINE Login channel เดียวกับ LIFF อื่น ๆ ก็ได้) แล้วนำ LIFF ID ที่ได้มาใส่แทนค่าด้านล่าง
+    const LIFF_ID = 'YOUR_HUB_LIFF_ID'; // <-- แก้เป็น LIFF ID ของหน้า "เมนูหลัก" นี้
+
+    // LIFF ID ของระบบเข้างาน (มีอยู่แล้ว)
+    const CHECKIN_LIFF_ID = '2011433356-rMDNTRo6';
+
+    // TODO: สร้าง LIFF app ใหม่อีกตัวสำหรับ leave.html (ระบบลางาน) แล้วนำ LIFF ID มาใส่ตรงนี้
+    const LEAVE_LIFF_ID = 'YOUR_LEAVE_LIFF_ID'; // <-- แก้เป็น LIFF ID ของหน้าระบบลางาน (leave.html)
+
+    liff.init({ liffId: LIFF_ID }).then(() => {
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      return liff.getProfile();
+    }).then((p) => {
+      if (!p) return;
+      document.getElementById('welcomeText').innerText = 'สวัสดีคุณ ' + p.displayName + ' 👋 เลือกเมนูที่ต้องการด้านล่าง';
+      document.getElementById('avatarImg').src = p.pictureUrl;
+      document.getElementById('avatarImg').style.display = 'inline-block';
+    }).catch((err) => {
+      document.getElementById('welcomeText').innerText = 'เลือกเมนูที่ต้องการด้านล่าง';
+      const el = document.getElementById('loadErr');
+      el.style.display = 'block';
+      el.innerText = '❌ โหลดข้อมูลผู้ใช้ไม่สำเร็จ: ' + err;
+    });
+
+    // เปิด LIFF อีกตัวหนึ่งภายใน LINE (ไม่เปิดเบราว์เซอร์นอกแอป)
+    function openLiffApp(liffId) {
+      if (!liffId || liffId.indexOf('YOUR_') === 0) {
+        alert('ยังไม่ได้ตั้งค่า LIFF ID สำหรับเมนูนี้ กรุณาตั้งค่าใน hub.html ก่อนใช้งาน');
+        return;
+      }
+      const url = 'https://liff.line.me/' + liffId;
+      if (window.liff && liff.isInClient && liff.isInClient()) {
+        liff.openWindow({ url: url, external: false });
+      } else {
+        window.location.href = url;
+      }
+    }
+
+    function openCheckIn() { openLiffApp(CHECKIN_LIFF_ID); }
+    function openLeave() { openLiffApp(LEAVE_LIFF_ID); }
+  </script>
+</body>
+</html>
