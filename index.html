@@ -143,7 +143,7 @@
         <button type="button" class="mode-btn active" id="modeInBtn" onclick="setMode('IN_AREA')">📍 ในพื้นที่ รพ.</button>
         <button type="button" class="mode-btn" id="modeOutBtn" onclick="setMode('OUT_AREA')">🧭 นอกพื้นที่</button>
       </div>
-      <div class="field-hint" id="modeHint">ต้องอยู่ในระยะ 300 เมตรจาก รพ. ระบบจะตรวจสอบ GPS อัตโนมัติ</div>
+      <div class="field-hint" id="modeHint">ต้องอยู่ในระยะ 300 เมตรจาก รพ.</div>
     </div>
 
     <div class="card" id="gpsCard">
@@ -290,8 +290,8 @@
       document.getElementById('modeInBtn').classList.toggle('active', mode === 'IN_AREA');
       document.getElementById('modeOutBtn').classList.toggle('active', mode === 'OUT_AREA');
       document.getElementById('modeHint').innerText = mode === 'OUT_AREA'
-        ? 'ไม่บังคับระยะ GPS แต่ต้องระบุหมายเหตุและถ่ายรูปยืนยันตัวตนก่อนเข้างาน'
-        : 'ต้องอยู่ในระยะ 300 เมตรจาก รพ. ระบบจะตรวจสอบ GPS อัตโนมัติ';
+        ? 'ต้องระบุหมายเหตุและถ่ายรูปยืนยันตัวตนก่อนเข้างาน'
+        : 'ต้องอยู่ในระยะ 300 เมตรจาก รพ.';
 
       refreshGpsCardDisplay();
       refreshOutAreaCardDisplay();
@@ -311,8 +311,8 @@
         const el = document.getElementById('gpsStatus');
         el.className = 'gps-status gps-wait';
         document.getElementById('gpsStatusText').innerText = currentPos
-          ? 'บันทึกตำแหน่งเป็นข้อมูลอ้างอิง (ไม่บังคับระยะ)'
-          : 'กำลังค้นหาตำแหน่งอ้างอิง (ไม่บังคับ)';
+          ? 'บันทึกตำแหน่งเป็นข้อมูลอ้างอิง'
+          : 'กำลังค้นหาตำแหน่งอ้างอิง';
       } else if (currentPos) {
         // กลับมาโหมดในพื้นที่ และมีตำแหน่งอยู่แล้ว -> คำนวณสถานะผ่าน/ไม่ผ่านใหม่
         const distance = calcDistance(currentPos.lat, currentPos.lng, HOSPITAL_LAT, HOSPITAL_LNG);
