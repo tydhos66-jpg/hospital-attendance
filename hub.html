@@ -85,7 +85,7 @@
 
   <div class="header">
     <img id="avatarImg" class="avatar" src="" style="display:none;">
-    <!-- <h1>🏥 เมนูหลัก</h1> -->
+    <h1>🏥 เมนูหลัก</h1>
     <p>โรงพยาบาลทุ่งยางแดง</p>
   </div>
 
@@ -111,7 +111,7 @@
 
     <!-- ===== เมนูหลัก (แสดงเมื่อยืนยันตัวตนผ่านแล้ว) ===== -->
     <div id="menuSection" style="display:none;">
-      <div class="welcome-card" id="welcomeText">เลือกเมนูที่ต้องการด้านล่าง</div>
+      <div class="welcome-card" id="welcomeText" style="text-align:center;">เลือกเมนูที่ต้องการด้านล่าง</div>
 
       <button class="menu-card" onclick="openCheckIn()">
         <div class="menu-icon icon-checkin">✅</div>
@@ -134,8 +134,8 @@
       <button class="menu-card" onclick="openLeave()">
         <div class="menu-icon icon-leave">📝</div>
         <div class="menu-text">
-          <p class="menu-title">ระบบลางาน</p>
-          <p class="menu-desc">ยื่นคำขอลา ระบุประเภท ช่วงวันที่ และเหตุผล พร้อมดูสถานะอนุมัติ</p>
+          <p class="">ระบบลางาน</p>
+          <p class="menu-desc">ยื่นคำขอลา ระบุประเภท ช่วงวันที่ <br> และเหตุผล พร้อมดูสถานะอนุมัติ</p>
         </div>
         <div class="menu-arrow">›</div>
       </button>
@@ -202,7 +202,7 @@
     function showMenu(name) {
       document.getElementById('verifyCard').style.display = 'none';
       document.getElementById('menuSection').style.display = 'block';
-      document.getElementById('welcomeText').innerText = 'สวัสดีคุณ ' + name + ' 👋 เลือกเมนูที่ต้องการด้านล่าง';
+      document.getElementById('welcomeText').innerText = 'สวัสดีคุณ ' + name + ' เลือกเมนูด้านล่าง';
     }
 
     // ===== ส่งข้อมูลยืนยันตัวตน (CID + ชื่อ-สกุล) ไปตรวจกับชีท Officer =====
