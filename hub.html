@@ -26,6 +26,10 @@
       border: 2px solid white; margin-bottom: 4px;
     }
     .container { max-width: 420px; margin: -20px auto 0; padding: 0 16px 30px; }
+    .card {
+      background: white; border-radius: 16px; padding: 18px;
+      margin-bottom: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
     .welcome-card {
       background: white; border-radius: 16px; padding: 16px;
       margin-bottom: 18px; text-align: center; font-size: 14px;
@@ -45,12 +49,36 @@
       font-size: 26px; flex-shrink: 0;
     }
     .icon-checkin { background: #E6F9EE; }
+    .icon-checkin-out { background: #E8F0FE; }
     .icon-leave { background: #FFF4E5; }
     .menu-text { flex: 1; }
     .menu-title { font-size: 16px; font-weight: 700; color: #1a1a1a; margin: 0 0 2px; }
     .menu-desc { font-size: 12.5px; color: #888; margin: 0; line-height: 1.4; }
     .menu-arrow { font-size: 20px; color: #ccc; }
     #loadErr { text-align: center; color: #E53935; font-size: 13px; padding: 12px; display: none; }
+
+    /* ===== ฟอร์มยืนยันตัวตน ===== */
+    .verify-title { text-align: center; font-size: 15px; font-weight: 700; color: #0d8f7d; margin-bottom: 4px; }
+    .verify-sub { text-align: center; font-size: 12.5px; color: #888; margin-bottom: 16px; }
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; font-weight: 600; }
+    input[type="text"] {
+      width: 100%; padding: 12px; border: 1.5px solid #ddd; border-radius: 10px;
+      font-size: 15px; background: white; font-family: inherit;
+    }
+    button.submit-btn {
+      width: 100%; padding: 15px; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px;
+      background: #0d8f7d; color: white;
+    }
+    button.submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+    #verifyMsg {
+      text-align: center; font-size: 14px; padding: 10px; border-radius: 10px;
+      margin-top: 10px; display: none;
+    }
+    .msg-success { background: #E6F9EE; color: #0d8f7d; }
+    .msg-error { background: #FDEAEA; color: #E53935; }
   </style>
 </head>
 <body>
@@ -62,26 +90,57 @@
   </div>
 
   <div class="container">
-    <div class="welcome-card" id="welcomeText">กำลังโหลดข้อมูลผู้ใช้...</div>
+
     <div id="loadErr"></div>
 
-    <button class="menu-card" onclick="openCheckIn()">
-      <div class="menu-icon icon-checkin">✅</div>
-      <div class="menu-text">
-        <p class="menu-title">ระบบเข้างาน</p>
-        <p class="menu-desc">เช็คอิน / เช็คเอาท์ พร้อมตรวจสอบตำแหน่ง GPS และล็อคเวรอัตโนมัติ</p>
+    <!-- ===== การ์ดยืนยันตัวตน (แสดงเฉพาะครั้งแรกที่ยังไม่ผูก LINE กับข้อมูลเจ้าหน้าที่) ===== -->
+    <div class="card" id="verifyCard" style="display:none;">
+      <div class="verify-title">ยืนยันตัวตนก่อนใช้งาน</div>
+      <div class="verify-sub">กรอกครั้งเดียว ระบบจะจดจำบัญชี LINE นี้ไว้ในการใช้งานครั้งต่อไป</div>
+      <div class="field">
+        <label>รหัสประจำตัวเจ้าหน้าที่ (CID)</label>
+        <input type="text" id="verifyCid" placeholder="กรอกรหัสประจำตัว">
       </div>
-      <div class="menu-arrow">›</div>
-    </button>
+      <div class="field">
+        <label>ชื่อ-นามสกุล (ตามที่ HR บันทึกไว้)</label>
+        <input type="text" id="verifyName" placeholder="เช่น สมชาย ใจดี">
+      </div>
+      <button class="submit-btn" id="btnVerify" onclick="submitVerify()">✅ ยืนยันตัวตน</button>
+      <div id="verifyMsg"></div>
+    </div>
 
-    <button class="menu-card" onclick="openLeave()">
-      <div class="menu-icon icon-leave">📝</div>
-      <div class="menu-text">
-        <p class="menu-title">ระบบลางาน</p>
-        <p class="menu-desc">ยื่นคำขอลา ระบุประเภท ช่วงวันที่ และเหตุผล พร้อมดูสถานะอนุมัติ</p>
-      </div>
-      <div class="menu-arrow">›</div>
-    </button>
+    <!-- ===== เมนูหลัก (แสดงเมื่อยืนยันตัวตนผ่านแล้ว) ===== -->
+    <div id="menuSection" style="display:none;">
+      <div class="welcome-card" id="welcomeText">เลือกเมนูที่ต้องการด้านล่าง</div>
+
+      <button class="menu-card" onclick="openCheckIn()">
+        <div class="menu-icon icon-checkin">✅</div>
+        <div class="menu-text">
+          <p class="menu-title">ระบบเข้างาน</p>
+          <p class="menu-desc">เช็คอิน / เช็คเอาท์ พร้อมตรวจสอบตำแหน่ง GPS และล็อคเวรอัตโนมัติ</p>
+        </div>
+        <div class="menu-arrow">›</div>
+      </button>
+
+      <button class="menu-card" onclick="openCheckInOutArea()">
+        <div class="menu-icon icon-checkin-out">🧭</div>
+        <div class="menu-text">
+          <p class="menu-title">เข้างานนอกพื้นที่</p>
+          <p class="menu-desc">สำหรับกรณีไม่ได้อยู่ในพื้นที่ รพ. ไม่บังคับระยะ GPS แต่ต้องระบุหมายเหตุและถ่ายรูปยืนยัน</p>
+        </div>
+        <div class="menu-arrow">›</div>
+      </button>
+
+      <button class="menu-card" onclick="openLeave()">
+        <div class="menu-icon icon-leave">📝</div>
+        <div class="menu-text">
+          <p class="menu-title">ระบบลางาน</p>
+          <p class="menu-desc">ยื่นคำขอลา ระบุประเภท ช่วงวันที่ และเหตุผล พร้อมดูสถานะอนุมัติ</p>
+        </div>
+        <div class="menu-arrow">›</div>
+      </button>
+    </div>
+
   </div>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -94,31 +153,103 @@
     // LIFF ID ของระบบเข้างาน (มีอยู่แล้ว)
     const CHECKIN_LIFF_ID = '2011433356-rMDNTRo6';
 
-    // TODO: สร้าง LIFF app ใหม่อีกตัวสำหรับ leave.html (ระบบลางาน) แล้วนำ LIFF ID มาใส่ตรงนี้
-    const LEAVE_LIFF_ID = '2011433356-ey1190SG'; // <-- แก้เป็น LIFF ID ของหน้าระบบลางาน (leave.html)
+    // LIFF ID ของระบบลางาน (มีอยู่แล้ว)
+    const LEAVE_LIFF_ID = '2011433356-ey1190SG';
+
+    // TODO: ต้องตรงกับ GAS_URL ในไฟล์ checkin.html / leave.html (URL เดียวกันของ Web App ที่ deploy ไว้)
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwwWDQVRaPLJS498THwf9NZX0B21Xx9MrF4QGKLterDJl97bb3e8YdUkLVqIZTPKTpD/exec';
+
+    let profile = null;
 
     liff.init({ liffId: LIFF_ID }).then(() => {
       if (!liff.isLoggedIn()) { liff.login(); return; }
       return liff.getProfile();
     }).then((p) => {
       if (!p) return;
-      document.getElementById('welcomeText').innerText = 'สวัสดีคุณ ' + p.displayName + ' 👋 เลือกเมนูที่ต้องการด้านล่าง';
+      profile = p;
       document.getElementById('avatarImg').src = p.pictureUrl;
       document.getElementById('avatarImg').style.display = 'inline-block';
+      return checkOfficerLink();
+    }).then((linked) => {
+      if (linked === undefined) return; // profile ไม่พร้อม (กรณี login redirect)
+      if (linked.linked) {
+        showMenu(linked.officerName || profile.displayName);
+      } else {
+        showVerifyForm();
+      }
     }).catch((err) => {
-      document.getElementById('welcomeText').innerText = 'เลือกเมนูที่ต้องการด้านล่าง';
       const el = document.getElementById('loadErr');
       el.style.display = 'block';
       el.innerText = '❌ โหลดข้อมูลผู้ใช้ไม่สำเร็จ: ' + err;
     });
 
+    // ===== เช็คว่าบัญชี LINE นี้ผูกกับข้อมูลเจ้าหน้าที่แล้วหรือยัง =====
+    function checkOfficerLink() {
+      return fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'checkLink', userId: profile.userId })
+      })
+      .then(res => res.json())
+      .catch(() => ({ linked: false }));
+    }
+
+    function showVerifyForm() {
+      document.getElementById('verifyCard').style.display = 'block';
+      document.getElementById('menuSection').style.display = 'none';
+    }
+
+    function showMenu(name) {
+      document.getElementById('verifyCard').style.display = 'none';
+      document.getElementById('menuSection').style.display = 'block';
+      document.getElementById('welcomeText').innerText = 'สวัสดีคุณ ' + name + ' 👋 เลือกเมนูที่ต้องการด้านล่าง';
+    }
+
+    // ===== ส่งข้อมูลยืนยันตัวตน (CID + ชื่อ-สกุล) ไปตรวจกับชีท Officer =====
+    function submitVerify() {
+      const cid = document.getElementById('verifyCid').value.trim();
+      const name = document.getElementById('verifyName').value.trim();
+      if (!cid || !name) { showVerifyMsg(false, 'กรุณากรอกรหัสประจำตัวและชื่อ-สกุลให้ครบ'); return; }
+      if (!profile) { showVerifyMsg(false, 'กำลังโหลดข้อมูลผู้ใช้ กรุณารอสักครู่'); return; }
+
+      const btn = document.getElementById('btnVerify');
+      btn.disabled = true;
+      showVerifyMsg(true, 'กำลังตรวจสอบข้อมูล...');
+
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'verifyOfficer', userId: profile.userId, cid: cid, officerName: name })
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          showVerifyMsg(true, 'ยืนยันตัวตนสำเร็จ กำลังเข้าสู่เมนูหลัก...');
+          setTimeout(() => showMenu(res.officerName || name), 700);
+        } else {
+          showVerifyMsg(false, res.message || 'ยืนยันตัวตนไม่สำเร็จ');
+        }
+      })
+      .catch(err => showVerifyMsg(false, 'เชื่อมต่อ backend ไม่สำเร็จ: ' + err))
+      .finally(() => { btn.disabled = false; });
+    }
+
+    function showVerifyMsg(success, message) {
+      const el = document.getElementById('verifyMsg');
+      el.innerText = message;
+      el.className = success ? 'msg-success' : 'msg-error';
+      el.style.display = 'block';
+    }
+
     // เปิด LIFF อีกตัวหนึ่งภายใน LINE (ไม่เปิดเบราว์เซอร์นอกแอป)
-    function openLiffApp(liffId) {
+    // queryParams (ถ้ามี) จะถูกต่อท้าย URL เช่น "mode=out_area" เพื่อบอกหน้าปลายทางว่าให้เปิดโหมดไหน
+    function openLiffApp(liffId, queryParams) {
       if (!liffId || liffId.indexOf('YOUR_') === 0) {
         alert('ยังไม่ได้ตั้งค่า LIFF ID สำหรับเมนูนี้ กรุณาตั้งค่าใน hub.html ก่อนใช้งาน');
         return;
       }
-      const url = 'https://liff.line.me/' + liffId;
+      let url = 'https://liff.line.me/' + liffId;
+      if (queryParams) url += '?' + queryParams;
       if (window.liff && liff.isInClient && liff.isInClient()) {
         liff.openWindow({ url: url, external: false });
       } else {
@@ -127,6 +258,7 @@
     }
 
     function openCheckIn() { openLiffApp(CHECKIN_LIFF_ID); }
+    function openCheckInOutArea() { openLiffApp(CHECKIN_LIFF_ID, 'mode=out_area'); }
     function openLeave() { openLiffApp(LEAVE_LIFF_ID); }
   </script>
 </body>
