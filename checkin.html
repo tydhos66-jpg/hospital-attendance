@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เช็คอินเข้างาน</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      background: #f2f6f5;
+      color: #1a1a1a;
+    }
+    .header {
+      background: linear-gradient(135deg, #0d8f7d, #14b8a0);
+      color: white;
+      padding: 28px 20px 36px;
+      text-align: center;
+      border-radius: 0 0 24px 24px;
+    }
+    .header h1 { font-size: 18px; margin: 4px 0 0; font-weight: 600; }
+    .header p { font-size: 13px; margin: 4px 0 0; opacity: 0.9; }
+    .avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 2px solid white; margin-bottom: 8px;
+    }
+    .container { max-width: 420px; margin: -18px auto 0; padding: 0 16px 30px; }
+    .card {
+      background: white; border-radius: 16px; padding: 18px;
+      margin-bottom: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .welcome { text-align: center; font-size: 15px; font-weight: 600; color: #0d8f7d; }
+    label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; font-weight: 600; }
+    select, input[type="text"], textarea {
+      width: 100%; padding: 12px; border: 1.5px solid #ddd; border-radius: 10px;
+      font-size: 15px; background: white; -webkit-appearance: none; font-family: inherit;
+    }
+    textarea { resize: vertical; }
+    select:disabled {
+      background: #f0f0f0; color: #666; cursor: not-allowed; border-color: #e0e0e0;
+    }
+    .shift-lock-note {
+      font-size: 12px; color: #888; margin-top: 6px;
+    }
+    .time-sync-note {
+      font-size: 11.5px; margin-top: 4px;
+    }
+    .sync-ok { color: #0d8f7d; }
+    .sync-fail { color: #E53935; }
+    .gps-status {
+      display: flex; align-items: center; gap: 10px; padding: 14px;
+      border-radius: 12px; font-size: 14px; font-weight: 600;
+    }
+    .gps-ok { background: #E6F9EE; color: #0d8f7d; }
+    .gps-fail { background: #FDEAEA; color: #E53935; }
+    .gps-wait { background: #F0F0F0; color: #888; }
+    .gps-icon { font-size: 20px; }
+    .info-row {
+      display: flex; justify-content: space-between; font-size: 13px;
+      padding: 8px 0; border-bottom: 1px solid #f0f0f0; color: #555;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row b { color: #222; }
+    button {
+      width: 100%; padding: 15px; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 4px;
+    }
+    .action-btn-wrap { position: relative; }
+    .action-btn-wrap button { margin-top: 0; }
+    .btn-checkin { background: #0d8f7d; color: white; }
+    .btn-checkin:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-checkout { background: #fff; color: #E53935; border: 1.5px solid #E53935; }
+    .btn-verify { background: #0d8f7d; color: white; margin-top: 14px; }
+    .btn-photo { background: #f0f0f0; color: #333; font-size: 14px; padding: 12px; margin-top: 8px; }
+    .status-note {
+      text-align: center; font-size: 12.5px; color: #888; margin-top: 6px;
+    }
+    #resultMsg, #verifyResultMsg {
+      text-align: center; font-size: 14px; padding: 10px; border-radius: 10px;
+      margin-top: 10px; display: none;
+    }
+    .msg-success { background: #E6F9EE; color: #0d8f7d; }
+    .msg-error { background: #FDEAEA; color: #E53935; }
+    .mode-options { display: flex; gap: 16px; }
+    .mode-option {
+      display: flex; align-items: center; gap: 6px; font-weight: normal;
+      font-size: 14px; color: #333; margin-bottom: 0;
+    }
+    .out-area-note { font-size: 12px; color: #888; margin-top: 8px; }
+    #outAreaPhotoPreview {
+      display: none; width: 100%; border-radius: 10px; margin-top: 10px; border: 1.5px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <img id="avatarImg" class="avatar" src="" style="display:none;">
+    <h1 id="headerTitle">🏥 ระบบเช็คอินเข้างาน</h1>
+    <p>โรงพยาบาลทุ่งยางแดง</p>
+  </div>
+
+  <div class="container">
+
+    <div class="card">
+      <div class="welcome" id="welcomeText">กำลังโหลดข้อมูลผู้ใช้...</div>
+    </div>
+
+    <!-- ===== การ์ดยืนยันตัวตน (แสดงเฉพาะครั้งแรกที่ยังไม่เคยผูก LINE ID) ===== -->
+    <div class="card" id="verifyCard" style="display:none;">
+      <label>รหัสประจำตัว (CID)</label>
+      <input type="text" id="inputCid" placeholder="กรอกรหัสประจำตัวของท่าน" inputmode="numeric">
+      <label style="margin-top:12px;">ชื่อ-นามสกุล (ตามที่ลงทะเบียนไว้)</label>
+      <input type="text" id="inputOfficerName" placeholder="กรอกชื่อ-นามสกุลของท่าน">
+      <button class="btn-verify" onclick="submitVerify()">✅ ยืนยันตัวตน</button>
+      <div id="verifyResultMsg"></div>
+    </div>
+
+    <!-- ===== ส่วนหลักของแอป (แสดงหลังยืนยันตัวตนสำเร็จแล้วเท่านั้น) ===== -->
+    <div id="mainApp" style="display:none;">
+
+      <div class="card">
+        <label>ระบบเข้างาน</label>
+        <div class="mode-options">
+          <label class="mode-option">
+            <input type="radio" name="locMode" value="IN_AREA" checked onchange="updateLocationMode()">
+            📍 ในพื้นที่
+          </label>
+          <label class="mode-option">
+            <input type="radio" name="locMode" value="OUT_AREA" onchange="updateLocationMode()">
+            🧭 นอกพื้นที่
+          </label>
+        </div>
+        <div id="outAreaNoteWrap" style="display:none; margin-top:12px;">
+          <label>หมายเหตุ (ระบุเหตุผลที่ปฏิบัติงานนอกพื้นที่)</label>
+          <textarea id="outAreaNote" rows="2" placeholder="เช่น ออกเยี่ยมบ้านผู้ป่วย, ประชุมนอกสถานที่" oninput="updateCheckInButton()"></textarea>
+
+          <label style="margin-top:12px;">ถ่ายรูปยืนยันตัวตน ณ สถานที่ปฏิบัติงาน (บังคับ)</label>
+          <input type="file" accept="image/*" capture="environment" id="outAreaPhotoInput" style="display:none;" onchange="handlePhotoCapture(event)">
+          <button type="button" class="btn-photo" id="btnTakePhoto" onclick="document.getElementById('outAreaPhotoInput').click()">📷 ถ่ายรูป</button>
+          <img id="outAreaPhotoPreview">
+        </div>
+        <div class="out-area-note" id="outAreaGpsNote" style="display:none;">โหมดนี้ยังบันทึกพิกัดไว้เป็นข้อมูล แต่ไม่บังคับว่าต้องอยู่ในระยะ รพ. (ต้องมีรูปถ่ายยืนยันก่อนเข้างาน)</div>
+      </div>
+
+      <div class="card">
+        <label>เวรที่ปฏิบัติงาน (ล็อคอัตโนมัติตามเวลา)</label>
+        <select id="shiftSelect" disabled>
+          <option value="">-- กรุณาเลือกเวร --</option>
+          <option value="เวรเช้า">☀️ เวรเช้า (08:30 - 16:30)</option>
+          <option value="เวรบ่าย">🌤 เวรบ่าย (16:30 - 00:30)</option>
+          <option value="เวรดึก">🌙 เวรดึก (00:30 - 08:30)</option>
+        </select>
+        <div class="time-sync-note sync-fail" id="timeSyncNote">⏳ กำลังซิงค์เวลากับเซิร์ฟเวอร์...</div>
+      </div>
+
+      <div class="card">
+        <div class="gps-status gps-wait" id="gpsStatus">
+          <span class="gps-icon">📍</span>
+          <span id="gpsStatusText">กำลังตรวจสอบตำแหน่ง GPS...</span>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="info-row"><span>เวลาปัจจุบัน (เซิร์ฟเวอร์)</span><b id="infoTime">-</b></div>
+          <div class="info-row"><span>ระยะห่างจาก รพ.</span><b id="infoDistance">-</b></div>
+          <div class="info-row"><span>ความแม่นยำ GPS</span><b id="infoAccuracy">-</b></div>
+        </div>
+        <button id="btnRefreshGps" onclick="refreshLocation()" style="display:none; margin-top:12px; background:#f0f0f0; color:#333; font-size:14px; padding:11px;">
+          🔄 อัปเดต GPS
+        </button>
+      </div>
+
+      <div class="action-btn-wrap">
+        <button class="btn-checkin" id="btnCheckIn" onclick="submitAttendance('IN')" disabled>✅ เข้างาน</button>
+        <button class="btn-checkout" id="btnCheckOut" onclick="submitAttendance('OUT')" style="display:none;">🚪 ออกงาน</button>
+      </div>
+      <div class="status-note" id="checkedInNote" style="display:none;">คุณเช็คอินอยู่ กดปุ่มด้านบนเพื่อออกงาน</div>
+
+      <div id="resultMsg"></div>
+
+    </div>
+
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    // ===== ตั้งค่า =====
+    const LIFF_ID = '2011433356-rMDNTRo6';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwwWDQVRaPLJS498THwf9NZX0B21Xx9MrF4QGKLterDJl97bb3e8YdUkLVqIZTPKTpD/exec';
+    const HOSPITAL_LAT = 6.61671;
+    const HOSPITAL_LNG = 101.42772;
+    const MAX_DISTANCE_METERS = 300;
+    const TIME_SYNC_INTERVAL_MS = 5 * 60 * 1000; // sync ใหม่ทุก 5 นาที กันเวลาไหล
+
+    let profile = null;
+    let officerName = null;
+    let currentPos = null; // {lat, lng, accuracy}
+    let gpsPassed = false;
+    let hasCheckedIn = false; // true = เช็คอินอยู่ ยังไม่ได้เช็คเอาท์ -> สลับเป็นปุ่มออกงาน
+    let locationMode = 'IN_AREA'; // 'IN_AREA' | 'OUT_AREA'
+    let outAreaPhotoDataUrl = null; // base64 (data URL) ของรูปที่ถ่ายยืนยัน (บีบอัดแล้ว)
+
+    // ===== ซิงค์เวลากับเซิร์ฟเวอร์ (Google Apps Script) =====
+    let serverTimeOffset = 0;
+    let timeSynced = false;
+
+    function getSyncedNow() {
+      return new Date(Date.now() + serverTimeOffset);
+    }
+
+    function syncServerTime() {
+      return fetch(GAS_URL + '?action=servertime', { method: 'GET' })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.success && data.timestamp) {
+            const deviceNow = Date.now();
+            serverTimeOffset = data.timestamp - deviceNow;
+            timeSynced = true;
+            setTimeSyncNote(true, '✅ ซิงค์เวลากับเซิร์ฟเวอร์แล้ว');
+          } else {
+            throw new Error('ข้อมูลเวลาจากเซิร์ฟเวอร์ไม่ถูกต้อง');
+          }
+        })
+        .catch(err => {
+          timeSynced = false;
+          setTimeSyncNote(false, '⚠️ ซิงค์เวลากับเซิร์ฟเวอร์ไม่สำเร็จ ใช้เวลาเครื่องชั่วคราว (' + err.message + ')');
+        })
+        .finally(() => {
+          lockShiftSelect();
+        });
+    }
+
+    function setTimeSyncNote(ok, text) {
+      const el = document.getElementById('timeSyncNote');
+      el.className = 'time-sync-note ' + (ok ? 'sync-ok' : 'sync-fail');
+      el.innerText = text;
+    }
+
+    // ===== ล็อคเวรอัตโนมัติตามเวลาของเซิร์ฟเวอร์ =====
+    function getCurrentShiftName() {
+      const now = getSyncedNow();
+      const mins = now.getHours() * 60 + now.getMinutes();
+      if (mins >= 510 && mins < 990) return 'เวรเช้า';  // 08:30–16:30
+      if (mins >= 990 || mins < 30) return 'เวรบ่าย';   // 16:30–00:30
+      return 'เวรดึก';                                    // 00:30–08:30
+    }
+
+    function lockShiftSelect() {
+      const shiftSelect = document.getElementById('shiftSelect');
+      const current = getCurrentShiftName();
+      if (shiftSelect.value !== current) {
+        shiftSelect.value = current;
+        updateCheckInButton();
+      }
+      shiftSelect.disabled = true;
+    }
+
+    syncServerTime();
+    setInterval(syncServerTime, TIME_SYNC_INTERVAL_MS);
+    setInterval(lockShiftSelect, 30000);
+
+    // ===== เริ่ม LIFF =====
+    liff.init({ liffId: LIFF_ID }).then(() => {
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      return liff.getProfile();
+    }).then((p) => {
+      if (!p) return;
+      profile = p;
+      return fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'checkLink', userId: p.userId })
+      }).then(res => res.json());
+    }).then((linkRes) => {
+      if (!linkRes) return;
+      if (linkRes.linked) {
+        officerName = linkRes.officerName || profile.displayName;
+        onVerified();
+      } else {
+        showVerifyCard();
+      }
+    }).catch((err) => {
+      document.getElementById('welcomeText').innerText = '❌ โหลดข้อมูลผู้ใช้ไม่สำเร็จ: ' + err;
+    });
+
+    function showVerifyCard() {
+      document.getElementById('welcomeText').innerText = 'กรุณายืนยันตัวตนก่อนใช้งานครั้งแรก';
+      document.getElementById('verifyCard').style.display = 'block';
+    }
+
+    function submitVerify() {
+      const cid = document.getElementById('inputCid').value.trim();
+      const officerNameInput = document.getElementById('inputOfficerName').value.trim();
+      if (!cid || !officerNameInput) {
+        showVerifyResult(false, 'กรุณากรอกรหัสและชื่อ-สกุลให้ครบ');
+        return;
+      }
+      showVerifyResult(true, 'กำลังตรวจสอบข้อมูล...');
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'verifyOfficer', userId: profile.userId, cid: cid, officerName: officerNameInput })
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          officerName = res.officerName;
+          showVerifyResult(true, 'ยืนยันตัวตนสำเร็จ กำลังเข้าสู่ระบบ...');
+          document.getElementById('verifyCard').style.display = 'none';
+          onVerified();
+        } else {
+          showVerifyResult(false, res.message || 'ยืนยันตัวตนไม่สำเร็จ');
+        }
+      })
+      .catch(err => showVerifyResult(false, 'เชื่อมต่อ backend ไม่สำเร็จ: ' + err));
+    }
+
+    function showVerifyResult(success, message) {
+      const el = document.getElementById('verifyResultMsg');
+      el.innerText = message;
+      el.className = success ? 'msg-success' : 'msg-error';
+      el.style.display = 'block';
+    }
+
+    function onVerified() {
+      document.getElementById('welcomeText').innerText = 'ยินดีต้อนรับคุณ ' + officerName + ' เข้าสู่งาน';
+      document.getElementById('avatarImg').src = profile.pictureUrl;
+      document.getElementById('avatarImg').style.display = 'inline-block';
+      document.getElementById('mainApp').style.display = 'block';
+      startWatchingLocation();
+      loadRecords();
+    }
+
+    // ===== เลือกระบบเข้างาน: ในพื้นที่ / นอกพื้นที่ =====
+    function updateLocationMode() {
+      const selected = document.querySelector('input[name="locMode"]:checked').value;
+      locationMode = selected;
+      const isOut = selected === 'OUT_AREA';
+      document.getElementById('outAreaNoteWrap').style.display = isOut ? 'block' : 'none';
+      document.getElementById('outAreaGpsNote').style.display = isOut ? 'block' : 'none';
+      if (!isOut) {
+        // สลับกลับมาในพื้นที่ -> เคลียร์รูปและหมายเหตุที่กรอกไว้ กันข้อมูลค้าง
+        outAreaPhotoDataUrl = null;
+        document.getElementById('outAreaPhotoPreview').style.display = 'none';
+        document.getElementById('outAreaPhotoInput').value = '';
+      }
+      updateCheckInButton();
+    }
+
+    // ===== ถ่ายรูปยืนยันตัวตน (บังคับเปิดกล้อง ไม่ให้เลือกจากอัลบั้ม ผ่าน capture="environment") =====
+    function handlePhotoCapture(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        resizeImage(e.target.result, 1280, 0.7, function (resizedDataUrl) {
+          outAreaPhotoDataUrl = resizedDataUrl;
+          const preview = document.getElementById('outAreaPhotoPreview');
+          preview.src = resizedDataUrl;
+          preview.style.display = 'block';
+          updateCheckInButton();
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ย่อขนาด/บีบอัดรูปฝั่ง browser ก่อนส่ง กันไฟล์ใหญ่เกินจากกล้องมือถือ
+    function resizeImage(dataUrl, maxWidth, quality, callback) {
+      const img = new Image();
+      img.onload = function () {
+        let width = img.width, height = img.height;
+        if (width > maxWidth) {
+          height = Math.round(height * (maxWidth / width));
+          width = maxWidth;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        callback(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = dataUrl;
+    }
+
+    // ===== GPS =====
+    function calcDistance(lat1, lng1, lat2, lng2) {
+      const R = 6371000;
+      const toRad = d => d * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function startWatchingLocation() {
+      if (!navigator.geolocation) {
+        setGpsStatus(false, 'อุปกรณ์ไม่รองรับ GPS');
+        return;
+      }
+      navigator.geolocation.watchPosition(processPosition, handleGpsError,
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+
+      setInterval(() => {
+        document.getElementById('infoTime').innerText = getSyncedNow().toLocaleTimeString('th-TH');
+      }, 1000);
+    }
+
+    function processPosition(pos) {
+      currentPos = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy
+      };
+      const distance = calcDistance(currentPos.lat, currentPos.lng, HOSPITAL_LAT, HOSPITAL_LNG);
+      document.getElementById('infoDistance').innerText = Math.round(distance) + ' เมตร';
+      document.getElementById('infoAccuracy').innerText = '± ' + Math.round(currentPos.accuracy) + ' เมตร';
+      gpsPassed = distance <= MAX_DISTANCE_METERS;
+      setGpsStatus(gpsPassed, gpsPassed ? 'ตำแหน่งผ่านเงื่อนไข สามารถบันทึกเวลาได้' : `อยู่ห่างจาก รพ. ${Math.round(distance)} เมตร (เกิน ${MAX_DISTANCE_METERS} เมตร)`);
+      updateCheckInButton();
+      resetRefreshButton();
+    }
+
+    function handleGpsError(err) {
+      setGpsStatus(false, 'กรุณาอนุญาตการเข้าถึงตำแหน่ง (' + err.message + ')');
+      resetRefreshButton();
+    }
+
+    function refreshLocation() {
+      const btn = document.getElementById('btnRefreshGps');
+      btn.disabled = true;
+      btn.innerText = '⏳ กำลังอัปเดตตำแหน่ง...';
+      setGpsStatus(false, 'กำลังค้นหาตำแหน่งใหม่...');
+      navigator.geolocation.getCurrentPosition(processPosition, handleGpsError,
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+    }
+
+    function resetRefreshButton() {
+      const btn = document.getElementById('btnRefreshGps');
+      btn.disabled = false;
+      btn.innerText = '🔄 อัปเดต GPS';
+    }
+
+    function setGpsStatus(ok, text) {
+      const el = document.getElementById('gpsStatus');
+      el.className = 'gps-status ' + (ok ? 'gps-ok' : 'gps-fail');
+      document.getElementById('gpsStatusText').innerText = text;
+      const btnRefresh = document.getElementById('btnRefreshGps');
+      btnRefresh.style.display = ok ? 'none' : 'block';
+    }
+
+    // สลับปุ่ม "กดเข้างาน" <-> "กดออกงาน" ในตำแหน่งเดียวกัน ตามสถานะ hasCheckedIn
+    function updateCheckInButton() {
+      const shift = document.getElementById('shiftSelect').value;
+      const btnIn = document.getElementById('btnCheckIn');
+      const btnOut = document.getElementById('btnCheckOut');
+
+      if (hasCheckedIn) {
+        btnIn.style.display = 'none';
+        btnOut.style.display = 'block';
+      } else {
+        btnIn.style.display = 'block';
+        btnOut.style.display = 'none';
+
+        let ready;
+        if (locationMode === 'OUT_AREA') {
+          const note = document.getElementById('outAreaNote').value.trim();
+          ready = !!(shift && currentPos && note && outAreaPhotoDataUrl); // ต้องมีรูปด้วย
+        } else {
+          ready = !!(shift && gpsPassed && currentPos);
+        }
+        btnIn.disabled = !ready;
+      }
+      document.getElementById('checkedInNote').style.display = hasCheckedIn ? 'block' : 'none';
+    }
+
+    // ===== ส่งข้อมูลเข้า-ออกงาน =====
+    function submitAttendance(type) {
+      if (!currentPos) { showResult(false, 'กำลังรอสัญญาณ GPS กรุณารอสักครู่'); return; }
+      const shift = document.getElementById('shiftSelect').value;
+      if (type === 'IN' && !shift) { showResult(false, 'กรุณาเลือกเวรก่อนกดเข้างาน'); return; }
+      if (type === 'IN' && hasCheckedIn) { showResult(false, 'คุณเช็คอินไว้แล้ว กรุณากดออกงานก่อน'); return; }
+
+      const mode = locationMode;
+      const remark = mode === 'OUT_AREA' ? document.getElementById('outAreaNote').value.trim() : '';
+      if (type === 'IN' && mode === 'OUT_AREA') {
+        if (!remark) { showResult(false, 'กรุณาระบุหมายเหตุก่อนเข้างานนอกพื้นที่'); return; }
+        if (!outAreaPhotoDataUrl) { showResult(false, 'กรุณาถ่ายรูปยืนยันตัวตนก่อนเข้างานนอกพื้นที่'); return; }
+      }
+
+      showResult(true, 'กำลังบันทึกข้อมูล...');
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'attendance',
+          userId: profile.userId,
+          displayName: profile.displayName,
+          type: type,
+          shift: shift,
+          lat: currentPos.lat,
+          lng: currentPos.lng,
+          locationMode: mode,
+          remark: remark,
+          photoBase64: (type === 'IN' && mode === 'OUT_AREA') ? outAreaPhotoDataUrl : '',
+          photoMimeType: 'image/jpeg'
+        })
+      })
+      .then(res => res.json())
+      .then(res => {
+        showResult(res.success, res.message);
+        if (res.success) {
+          hasCheckedIn = (type === 'IN');
+          if (type === 'IN') {
+            // เคลียร์รูป/หมายเหตุหลังเช็คอินสำเร็จ กันใช้รูปเดิมซ้ำในครั้งถัดไป
+            outAreaPhotoDataUrl = null;
+            document.getElementById('outAreaPhotoPreview').style.display = 'none';
+            document.getElementById('outAreaPhotoInput').value = '';
+            document.getElementById('outAreaNote').value = '';
+          }
+          updateCheckInButton();
+        }
+      })
+      .catch(err => showResult(false, 'เชื่อมต่อ backend ไม่สำเร็จ: ' + err));
+    }
+
+    function showResult(success, message) {
+      const el = document.getElementById('resultMsg');
+      el.innerText = message;
+      el.className = success ? 'msg-success' : 'msg-error';
+      el.style.display = 'block';
+    }
+
+    function loadRecords() {
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'records', userId: profile.userId })
+      }).then(res => res.json()).then(data => {
+        if (data.attendance && data.attendance.length > 0) {
+          hasCheckedIn = data.attendance[0].type === 'IN';
+          updateCheckInButton();
+        }
+      }).catch(() => {});
+    }
+  </script>
+</body>
+</html>
