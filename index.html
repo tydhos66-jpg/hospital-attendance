@@ -47,6 +47,19 @@
     }
     .sync-ok { color: #0d8f7d; }
     .sync-fail { color: #E53935; }
+
+    /* ===== ตัวเลือกโหมด ในพื้นที่ / นอกพื้นที่ ===== */
+    .mode-toggle { display: flex; gap: 8px; margin-top: 4px; }
+    .mode-btn {
+      flex: 1; padding: 11px 8px; border-radius: 10px; border: 1.5px solid #ddd;
+      background: #f7f7f7; color: #666; font-size: 13.5px; font-weight: 700;
+      cursor: pointer;
+    }
+    .mode-btn.active {
+      background: #0d8f7d; color: white; border-color: #0d8f7d;
+    }
+    .field-hint { font-size: 12px; color: #888; margin-top: 8px; line-height: 1.4; }
+
     .gps-status {
       display: flex; align-items: center; gap: 10px; padding: 14px;
       border-radius: 12px; font-size: 14px; font-weight: 600;
@@ -61,6 +74,23 @@
     }
     .info-row:last-child { border-bottom: none; }
     .info-row b { color: #222; }
+
+    /* ===== การ์ดเข้างานนอกพื้นที่ ===== */
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    textarea {
+      width: 100%; padding: 12px; border: 1.5px solid #ddd; border-radius: 10px;
+      font-size: 15px; background: white; font-family: inherit; resize: vertical; min-height: 70px;
+    }
+    input[type="file"] {
+      width: 100%; padding: 10px; border: 1.5px solid #ddd; border-radius: 10px;
+      font-size: 14px; background: white;
+    }
+    .required-mark { color: #E53935; }
+    #outAreaPhotoPreview {
+      display: none; max-width: 100%; border-radius: 10px; margin-top: 10px;
+    }
+
     button {
       width: 100%; padding: 15px; border: none; border-radius: 12px;
       font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 4px;
@@ -108,6 +138,15 @@
     </div>
 
     <div class="card">
+      <label>โหมดการเข้างาน</label>
+      <div class="mode-toggle">
+        <button type="button" class="mode-btn active" id="modeInBtn" onclick="setMode('IN_AREA')">📍 ในพื้นที่ รพ.</button>
+        <button type="button" class="mode-btn" id="modeOutBtn" onclick="setMode('OUT_AREA')">🧭 นอกพื้นที่</button>
+      </div>
+      <div class="field-hint" id="modeHint">ต้องอยู่ในระยะ 300 เมตรจาก รพ. ระบบจะตรวจสอบ GPS อัตโนมัติ</div>
+    </div>
+
+    <div class="card" id="gpsCard">
       <div class="gps-status gps-wait" id="gpsStatus">
         <span class="gps-icon">📍</span>
         <span id="gpsStatusText">กำลังตรวจสอบตำแหน่ง GPS...</span>
@@ -120,6 +159,18 @@
       <button id="btnRefreshGps" onclick="refreshLocation()" style="display:none; margin-top:12px; background:#f0f0f0; color:#333; font-size:14px; padding:11px;">
         🔄 อัปเดต GPS
       </button>
+    </div>
+
+    <div class="card" id="outAreaCard" style="display:none;">
+      <div class="field">
+        <label>หมายเหตุ (เหตุผลที่เข้างานนอกพื้นที่) <span class="required-mark">*</span></label>
+        <textarea id="outAreaRemark" placeholder="เช่น ออกตรวจเยี่ยมผู้ป่วยที่บ้าน, ประชุม/อบรมนอกสถานที่..."></textarea>
+      </div>
+      <div class="field">
+        <label>ถ่ายรูปยืนยันตัวตน <span class="required-mark">*</span></label>
+        <input type="file" accept="image/*" capture="environment" id="outAreaPhotoInput" onchange="handlePhotoSelected(event)">
+        <img id="outAreaPhotoPreview" alt="รูปยืนยันตัวตน">
+      </div>
     </div>
 
     <div class="action-btn-wrap">
@@ -146,10 +197,11 @@
     let currentPos = null; // {lat, lng, accuracy}
     let gpsPassed = false;
     let hasCheckedIn = false; // true = เช็คอินอยู่ ยังไม่ได้เช็คเอาท์ -> ล็อคปุ่มเข้างาน
+    let locationMode = 'IN_AREA'; // 'IN_AREA' | 'OUT_AREA'
+    let outAreaPhotoBase64 = '';
+    let outAreaPhotoMime = '';
 
     // ===== ซิงค์เวลากับเซิร์ฟเวอร์ (Google Apps Script) =====
-    // แทนที่จะใช้ new Date() ของเครื่อง (ซึ่งพนักงานอาจปรับเวลาเองเพื่อสลับเวร)
-    // เราคำนวณ "ส่วนต่าง" (offset) ระหว่างเวลาเซิร์ฟเวอร์กับเวลาเครื่อง แล้วบวกกลับเข้าไปทุกครั้งที่ต้องใช้เวลา
     let serverTimeOffset = 0;   // ms: serverTime - deviceTime ณ ตอนซิงค์
     let timeSynced = false;
 
@@ -175,7 +227,7 @@
           setTimeSyncNote(false, '⚠️ ซิงค์เวลากับเซิร์ฟเวอร์ไม่สำเร็จ ใช้เวลาเครื่องชั่วคราว (' + err.message + ')');
         })
         .finally(() => {
-          lockShiftSelect(); // ล็อคเวรใหม่ทุกครั้งหลังซิงค์เวลาเสร็จ (ไม่ว่าจะสำเร็จหรือ fallback)
+          lockShiftSelect();
         });
     }
 
@@ -186,7 +238,6 @@
     }
 
     // ===== ล็อคเวรอัตโนมัติตามเวลาของเซิร์ฟเวอร์ =====
-    // เวรเช้า 08:30-16:30 / เวรบ่าย 16:30-00:30 / เวรดึก 00:30-08:30
     function getCurrentShiftName() {
       const now = getSyncedNow();
       const mins = now.getHours() * 60 + now.getMinutes();
@@ -205,10 +256,8 @@
       shiftSelect.disabled = true; // ล็อคเสมอ ไม่ให้ผู้ใช้เปลี่ยนเอง
     }
 
-    // ซิงค์เวลาทันทีตั้งแต่หน้าโหลด (ไม่ต้องรอ LIFF/GPS) แล้วซิงค์ซ้ำเป็นระยะเผื่อ offset คลาดเคลื่อน
     syncServerTime();
     setInterval(syncServerTime, TIME_SYNC_INTERVAL_MS);
-    // เช็คจุดตัดเวรถี่ขึ้น (ทุก 30 วิ) โดยใช้เวลาที่ sync ไว้ล่าสุด ไม่ต้องยิง request ใหม่ทุกครั้ง
     setInterval(lockShiftSelect, 30000);
 
     // ===== เริ่ม LIFF =====
@@ -227,6 +276,77 @@
       document.getElementById('welcomeText').innerText = '❌ โหลดข้อมูลผู้ใช้ไม่สำเร็จ: ' + err;
     });
 
+    // ===== อ่านโหมดเริ่มต้นจาก query string เช่น ?mode=out_area (มาจากปุ่ม "เข้างานนอกพื้นที่" ใน hub.html) =====
+    (function initModeFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'out_area') {
+        setMode('OUT_AREA');
+      }
+    })();
+
+    // ===== สลับโหมด ในพื้นที่ / นอกพื้นที่ =====
+    function setMode(mode) {
+      locationMode = mode;
+      document.getElementById('modeInBtn').classList.toggle('active', mode === 'IN_AREA');
+      document.getElementById('modeOutBtn').classList.toggle('active', mode === 'OUT_AREA');
+      document.getElementById('modeHint').innerText = mode === 'OUT_AREA'
+        ? 'ไม่บังคับระยะ GPS แต่ต้องระบุหมายเหตุและถ่ายรูปยืนยันตัวตนก่อนเข้างาน'
+        : 'ต้องอยู่ในระยะ 300 เมตรจาก รพ. ระบบจะตรวจสอบ GPS อัตโนมัติ';
+
+      refreshGpsCardDisplay();
+      refreshOutAreaCardDisplay();
+      updateCheckInButton();
+    }
+
+    function refreshOutAreaCardDisplay() {
+      document.getElementById('outAreaCard').style.display =
+        (locationMode === 'OUT_AREA' && !hasCheckedIn) ? 'block' : 'none';
+    }
+
+    // ปรับการแสดงผลการ์ด GPS ให้เหมาะกับโหมดปัจจุบัน
+    // โหมดนอกพื้นที่: แสดงตำแหน่งเป็นข้อมูลอ้างอิงเท่านั้น ไม่ใช้ตัดสินว่าผ่าน/ไม่ผ่าน และไม่บังคับ
+    function refreshGpsCardDisplay() {
+      if (locationMode === 'OUT_AREA') {
+        document.getElementById('btnRefreshGps').style.display = 'none';
+        const el = document.getElementById('gpsStatus');
+        el.className = 'gps-status gps-wait';
+        document.getElementById('gpsStatusText').innerText = currentPos
+          ? 'บันทึกตำแหน่งเป็นข้อมูลอ้างอิง (ไม่บังคับระยะ)'
+          : 'กำลังค้นหาตำแหน่งอ้างอิง (ไม่บังคับ)';
+      } else if (currentPos) {
+        // กลับมาโหมดในพื้นที่ และมีตำแหน่งอยู่แล้ว -> คำนวณสถานะผ่าน/ไม่ผ่านใหม่
+        const distance = calcDistance(currentPos.lat, currentPos.lng, HOSPITAL_LAT, HOSPITAL_LNG);
+        gpsPassed = distance <= MAX_DISTANCE_METERS;
+        setGpsStatus(gpsPassed, gpsPassed
+          ? 'ตำแหน่งผ่านเงื่อนไข สามารถบันทึกเวลาได้'
+          : `อยู่ห่างจาก รพ. ${Math.round(distance)} เมตร (เกิน ${MAX_DISTANCE_METERS} เมตร)`);
+      } else {
+        setGpsStatus(false, 'กำลังตรวจสอบตำแหน่ง GPS...');
+      }
+    }
+
+    // ===== รูปถ่ายยืนยันตัวตน (เฉพาะเข้างานนอกพื้นที่) =====
+    function handlePhotoSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) { outAreaPhotoBase64 = ''; outAreaPhotoMime = ''; updateCheckInButton(); return; }
+
+      outAreaPhotoMime = file.type || 'image/jpeg';
+      const reader = new FileReader();
+      reader.onload = function () {
+        outAreaPhotoBase64 = reader.result; // data:image/...;base64,...
+        const preview = document.getElementById('outAreaPhotoPreview');
+        preview.src = outAreaPhotoBase64;
+        preview.style.display = 'block';
+        updateCheckInButton();
+      };
+      reader.onerror = function () {
+        showResult(false, 'อ่านไฟล์รูปภาพไม่สำเร็จ กรุณาลองใหม่');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    document.getElementById('outAreaRemark').addEventListener('input', updateCheckInButton);
+
     // ===== GPS =====
     function calcDistance(lat1, lng1, lat2, lng2) {
       const R = 6371000;
@@ -241,6 +361,7 @@
         setGpsStatus(false, 'อุปกรณ์ไม่รองรับ GPS');
         return;
       }
+      // ยังคง watch ตำแหน่งไว้เสมอ แม้อยู่ในโหมดนอกพื้นที่ เพื่อบันทึกเป็นข้อมูลอ้างอิงในชีท
       navigator.geolocation.watchPosition(processPosition, handleGpsError,
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
 
@@ -258,18 +379,28 @@
       const distance = calcDistance(currentPos.lat, currentPos.lng, HOSPITAL_LAT, HOSPITAL_LNG);
       document.getElementById('infoDistance').innerText = Math.round(distance) + ' เมตร';
       document.getElementById('infoAccuracy').innerText = '± ' + Math.round(currentPos.accuracy) + ' เมตร';
-      gpsPassed = distance <= MAX_DISTANCE_METERS;
-      setGpsStatus(gpsPassed, gpsPassed ? 'ตำแหน่งผ่านเงื่อนไข สามารถบันทึกเวลาได้' : `อยู่ห่างจาก รพ. ${Math.round(distance)} เมตร (เกิน ${MAX_DISTANCE_METERS} เมตร)`);
+
+      if (locationMode === 'OUT_AREA') {
+        // โหมดนอกพื้นที่: แสดงเป็นข้อมูลอ้างอิงเฉย ๆ ไม่ตัดสินผ่าน/ไม่ผ่าน
+        refreshGpsCardDisplay();
+      } else {
+        gpsPassed = distance <= MAX_DISTANCE_METERS;
+        setGpsStatus(gpsPassed, gpsPassed
+          ? 'ตำแหน่งผ่านเงื่อนไข สามารถบันทึกเวลาได้'
+          : `อยู่ห่างจาก รพ. ${Math.round(distance)} เมตร (เกิน ${MAX_DISTANCE_METERS} เมตร)`);
+      }
       updateCheckInButton();
       resetRefreshButton();
     }
 
     function handleGpsError(err) {
-      setGpsStatus(false, 'กรุณาอนุญาตการเข้าถึงตำแหน่ง (' + err.message + ')');
+      if (locationMode !== 'OUT_AREA') {
+        setGpsStatus(false, 'กรุณาอนุญาตการเข้าถึงตำแหน่ง (' + err.message + ')');
+      }
       resetRefreshButton();
     }
 
-    // ปุ่มรีเฟรช GPS แบบกดเอง — ขอค่าตำแหน่งใหม่ทันที ไม่ใช้ค่า cache เก่า
+    // ปุ่มรีเฟรช GPS แบบกดเอง (ใช้เฉพาะโหมดในพื้นที่)
     function refreshLocation() {
       const btn = document.getElementById('btnRefreshGps');
       btn.disabled = true;
@@ -290,9 +421,9 @@
       el.className = 'gps-status ' + (ok ? 'gps-ok' : 'gps-fail');
       document.getElementById('gpsStatusText').innerText = text;
 
-      // แสดงปุ่ม "อัปเดต GPS" เฉพาะตอนที่ไม่ผ่านเงื่อนไข (ขึ้นแดง)
+      // แสดงปุ่ม "อัปเดต GPS" เฉพาะโหมดในพื้นที่ตอนที่ไม่ผ่านเงื่อนไข
       const btnRefresh = document.getElementById('btnRefreshGps');
-      btnRefresh.style.display = ok ? 'none' : 'block';
+      btnRefresh.style.display = (!ok && locationMode !== 'OUT_AREA') ? 'block' : 'none';
     }
 
     // สลับปุ่ม "กดเข้างาน" <-> "กดออกงาน" ในตำแหน่งเดียวกัน ตามสถานะ hasCheckedIn
@@ -301,25 +432,46 @@
       const btnIn = document.getElementById('btnCheckIn');
       const btnOut = document.getElementById('btnCheckOut');
 
+      refreshOutAreaCardDisplay();
+
       if (hasCheckedIn) {
-        // เช็คอินอยู่ -> ซ่อนปุ่มเข้างาน, โชว์ปุ่มออกงาน
         btnIn.style.display = 'none';
         btnOut.style.display = 'block';
       } else {
-        // ยังไม่ได้เช็คอิน -> โชว์ปุ่มเข้างาน (เทาถ้ายังไม่พร้อม), ซ่อนปุ่มออกงาน
         btnIn.style.display = 'block';
         btnOut.style.display = 'none';
-        btnIn.disabled = !(shift && gpsPassed && currentPos);
+
+        if (locationMode === 'OUT_AREA') {
+          const remarkOk = document.getElementById('outAreaRemark').value.trim().length > 0;
+          btnIn.disabled = !(shift && remarkOk && outAreaPhotoBase64);
+        } else {
+          btnIn.disabled = !(shift && gpsPassed && currentPos);
+        }
       }
       document.getElementById('checkedInNote').style.display = hasCheckedIn ? 'block' : 'none';
     }
 
     // ===== ส่งข้อมูลเข้า-ออกงาน =====
     function submitAttendance(type) {
-      if (!currentPos) { showResult(false, 'กำลังรอสัญญาณ GPS กรุณารอสักครู่'); return; }
       const shift = document.getElementById('shiftSelect').value;
       if (type === 'IN' && !shift) { showResult(false, 'กรุณาเลือกเวรก่อนกดเข้างาน'); return; }
       if (type === 'IN' && hasCheckedIn) { showResult(false, 'คุณเช็คอินไว้แล้ว กรุณากดออกงานก่อน'); return; }
+
+      let remark = '';
+      let photoBase64 = '';
+      let photoMimeType = '';
+
+      if (locationMode === 'OUT_AREA') {
+        if (type === 'IN') {
+          remark = document.getElementById('outAreaRemark').value.trim();
+          if (!remark) { showResult(false, 'กรุณาระบุหมายเหตุก่อนเข้างานนอกพื้นที่'); return; }
+          if (!outAreaPhotoBase64) { showResult(false, 'กรุณาถ่ายรูปยืนยันตัวตนก่อนเข้างานนอกพื้นที่'); return; }
+          photoBase64 = outAreaPhotoBase64;
+          photoMimeType = outAreaPhotoMime;
+        }
+      } else {
+        if (!currentPos) { showResult(false, 'กำลังรอสัญญาณ GPS กรุณารอสักครู่'); return; }
+      }
 
       showResult(true, 'กำลังบันทึกข้อมูล...');
       fetch(GAS_URL, {
@@ -331,8 +483,12 @@
           displayName: profile.displayName,
           type: type,
           shift: shift,
-          lat: currentPos.lat,
-          lng: currentPos.lng
+          lat: currentPos ? currentPos.lat : '',
+          lng: currentPos ? currentPos.lng : '',
+          locationMode: locationMode,
+          remark: remark,
+          photoBase64: photoBase64,
+          photoMimeType: photoMimeType
         })
       })
       .then(res => res.json())
@@ -341,6 +497,14 @@
         if (res.success) {
           // เข้างานสำเร็จ -> ล็อคปุ่ม, ออกงานสำเร็จ -> ปลดล็อค
           hasCheckedIn = (type === 'IN');
+          if (type === 'IN') {
+            // เคลียร์ฟอร์มนอกพื้นที่หลังเข้างานสำเร็จ
+            document.getElementById('outAreaRemark').value = '';
+            document.getElementById('outAreaPhotoInput').value = '';
+            document.getElementById('outAreaPhotoPreview').style.display = 'none';
+            outAreaPhotoBase64 = '';
+            outAreaPhotoMime = '';
+          }
           updateCheckInButton();
         }
       })
