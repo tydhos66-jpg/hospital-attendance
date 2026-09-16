@@ -48,15 +48,14 @@
     .sync-ok { color: #0d8f7d; }
     .sync-fail { color: #E53935; }
 
-    /* ===== ตัวเลือกโหมด ในพื้นที่ / นอกพื้นที่ ===== */
-    .mode-toggle { display: flex; gap: 8px; margin-top: 4px; }
-    .mode-btn {
-      flex: 1; padding: 11px 8px; border-radius: 10px; border: 1.5px solid #ddd;
-      background: #f7f7f7; color: #666; font-size: 13.5px; font-weight: 700;
-      cursor: pointer;
+    /* ===== ป้ายแสดงโหมดปัจจุบัน (อ่านอย่างเดียว กำหนดมาจาก hub.html) ===== */
+    .mode-row {
+      display: flex; align-items: center; justify-content: space-between;
     }
-    .mode-btn.active {
-      background: #0d8f7d; color: white; border-color: #0d8f7d;
+    .mode-row label { margin-bottom: 0; }
+    .mode-badge {
+      font-size: 13px; font-weight: 700; color: #0d8f7d;
+      background: #E6F9EE; padding: 5px 12px; border-radius: 20px;
     }
     .field-hint { font-size: 12px; color: #888; margin-top: 8px; line-height: 1.4; }
 
@@ -138,10 +137,9 @@
     </div>
 
     <div class="card">
-      <label>โหมดการเข้างาน</label>
-      <div class="mode-toggle">
-        <button type="button" class="mode-btn active" id="modeInBtn" onclick="setMode('IN_AREA')">📍 ในพื้นที่ รพ.</button>
-        <button type="button" class="mode-btn" id="modeOutBtn" onclick="setMode('OUT_AREA')">🧭 นอกพื้นที่</button>
+      <div class="mode-row">
+        <label>โหมดการเข้างาน</label>
+        <span class="mode-badge" id="modeBadge">📍 ในพื้นที่ รพ.</span>
       </div>
       <div class="field-hint" id="modeHint">ต้องอยู่ในระยะ 300 เมตรจาก รพ.</div>
     </div>
@@ -287,8 +285,7 @@
     // ===== สลับโหมด ในพื้นที่ / นอกพื้นที่ =====
     function setMode(mode) {
       locationMode = mode;
-      document.getElementById('modeInBtn').classList.toggle('active', mode === 'IN_AREA');
-      document.getElementById('modeOutBtn').classList.toggle('active', mode === 'OUT_AREA');
+      document.getElementById('modeBadge').innerText = mode === 'OUT_AREA' ? '🧭 นอกพื้นที่' : '📍 ในพื้นที่ รพ.';
       document.getElementById('modeHint').innerText = mode === 'OUT_AREA'
         ? 'ต้องระบุหมายเหตุและถ่ายรูปยืนยันตัวตนก่อนเข้างาน'
         : 'ต้องอยู่ในระยะ 300 เมตรจาก รพ.';
